@@ -22,7 +22,9 @@ func main() {
 	}
 	fmt.Println("пользователь", resp)
 
-	funcres, err := conn.Call("mm.add", []interface{}{1, 222})
+	playerName := ""
+	fmt.Scanln(&playerName)
+	funcres, err := conn.Call("mm.user_guild", []interface{}{playerName})
 	fmt.Println(funcres)
 
 	spaceName := "user"
