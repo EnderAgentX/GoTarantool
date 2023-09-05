@@ -8,7 +8,7 @@ import (
 
 func main() {
 	conn, err := tarantool.Connect("127.0.0.1:3301", tarantool.Opts{
-		User: "example",
+		User: "ex",
 		Pass: "secret",
 	})
 	if err != nil {
@@ -16,16 +16,19 @@ func main() {
 	}
 	defer conn.Close()
 
-	resp, err := conn.Select("example", "primary", 0, 1, tarantool.IterEq, []interface{}{2})
+	resp, err := conn.Select("user", "primary", 0, 1, tarantool.IterEq, []interface{}{2})
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(resp)
+	fmt.Println("пользователь", resp)
 
-	spaceName := "tester"
-	indexName := "scanner"
-	idFn := conn.Schema.Spaces[spaceName].Fields["id"].Id
-	bandNameFn := conn.Schema.Spaces[spaceName].Fields["band_name"].Id
+	funcres, err := conn.Call("mm.add", []interface{}{1, 222})
+	fmt.Println(funcres)
+
+	spaceName := "user"
+	indexName := "primary"
+	idFn := conn.Schema.Spaces[spaceName].Fields["user_id"].Id
+	bandNameFn := conn.Schema.Spaces[spaceName].Fields["user_name"].Id
 
 	var tuplesPerRequest uint32 = 2
 	cursor := []interface{}{}

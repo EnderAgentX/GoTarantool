@@ -2,7 +2,7 @@ module GoTarantool
 
 go 1.20
 
-require github.com/tarantool/go-tarantool v1.12.0
+require github.com/tarantool/go-tarantool v1.12.1
 
 require (
 	github.com/golang/protobuf v1.3.1 // indirect
