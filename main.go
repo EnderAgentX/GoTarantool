@@ -18,27 +18,39 @@ func main() {
 	}
 	defer conn.Close()
 
-	resp, err := conn.Select("user", "primary", 0, 1, tarantool.IterEq, []interface{}{2})
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("пользователь", resp)
+	//resp, err := conn.Select("user", "primary", 0, 1, tarantool.IterEq, []interface{}{2})
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
+	//fmt.Println("пользователь", resp)
 
 	//playerName := ""
 	//fmt.Scanln(&playerName)
 	//funcres, err := conn.Call("mm.user_guild", []interface{}{playerName})
 	//fmt.Println(funcres)
 
-	guild := 1
 	myscanner := bufio.NewScanner(os.Stdin)
+
+	fmt.Print("Введите имя пользователя: ")
+	myscanner.Scan()
+	myUser := myscanner.Text()
+	fmt.Println(myUser)
+
+	info, _ := conn.Call("mm.login", []interface{}{myUser})
+	tuples := info.Tuples()
+	userId := tuples[0][0]
+	guildId := tuples[1][0]
+	fmt.Println(userId)
+	guildName, _ := conn.Call("mm.user_guild", []interface{}{myUser})
 
 	for {
 		fmt.Print("Введите сообщение: ")
 		myscanner.Scan()
 		msg := myscanner.Text()
-		fmt.Println(msg)
-		funcres, _ := conn.Call("mm.new_msg", []interface{}{msg, guild})
-		fmt.Println(funcres)
+		fmt.Printf("%s(%s): %s", myUser, guildName.Tuples()[0][0], msg)
+		fmt.Println("")
+		_, _ = conn.Call("mm.new_msg", []interface{}{msg, guildId, userId})
+		//fmt.Println(funcres)
 	}
 
 	//spaceName := "user"
