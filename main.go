@@ -29,6 +29,8 @@ func main() {
 	//funcres, err := conn.Call("mm.user_guild", []interface{}{playerName})
 	//fmt.Println(funcres)
 
+	_, _ = conn.Call("mm.insertAll", []interface{}{})
+
 	myscanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("Введите имя пользователя: ")
