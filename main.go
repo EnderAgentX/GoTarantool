@@ -1,33 +1,105 @@
 package main
 
 import (
+	"GoTarantool/Server"
 	"bufio"
 	"fmt"
-	"github.com/tarantool/go-tarantool"
+	"github.com/gotk3/gotk3/gtk"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
-	conn, err := tarantool.Connect("127.0.0.1:3301", tarantool.Opts{
-		User: "ex",
-		Pass: "secret",
-	})
-	if err != nil {
-		log.Fatalf("Connection refused")
-	}
+	conn := Server.Server()
 	defer conn.Close()
 
-	//resp, err := conn.Select("user", "primary", 0, 1, tarantool.IterEq, []interface{}{2})
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	//fmt.Println("пользователь", resp)
+	gtk.Init(nil)
 
-	//playerName := ""
-	//fmt.Scanln(&playerName)
-	//funcres, err := conn.Call("mm.user_guild", []interface{}{playerName})
-	//fmt.Println(funcres)
+	// Создаём билдер
+	b, err := gtk.BuilderNew()
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	// Загружаем в билдер окно из файла Glade
+	err = b.AddFromFile("Chat_gui.glade")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	// Получаем объект главного окна по ID
+	obj, err := b.GetObject("main_window")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	// Преобразуем из объекта именно окно типа gtk.Window
+	// и соединяем с сигналом "destroy" чтобы можно было закрыть
+	// приложение при закрытии окна
+	win := obj.(*gtk.Window)
+	win.Connect("destroy", func() {
+		gtk.MainQuit()
+	})
+
+	// Получаем поле ввода
+	obj, _ = b.GetObject("login_entry")
+	loginEntry := obj.(*gtk.Entry)
+
+	// Получаем кнопку
+	obj, _ = b.GetObject("login_btn")
+	loginBtn := obj.(*gtk.Button)
+
+	// Получаем метку
+	obj, _ = b.GetObject("msg_box")
+	msgBox := obj.(*gtk.Label)
+	msgBox.SetText("")
+
+	obj, _ = b.GetObject("guild_label")
+	guildLabel := obj.(*gtk.Label)
+
+	textLabel, _ := msgBox.GetText()
+
+	t := time.NewTimer(3 * time.Second)
+	go func() {
+		for {
+			t.Reset(1 * time.Second)
+			textLabel, _ = msgBox.GetText()
+			msgBox.SetText(textLabel + "*" + "\n")
+			<-t.C
+		}
+	}()
+
+	// Сигнал по нажатию на кнопку
+	loginBtn.Connect("clicked", func() {
+
+		if err == nil {
+			// Устанавливаем текст из поля ввода метке
+			myUser, _ := loginEntry.GetText()
+			textLabel, _ = msgBox.GetText()
+			print(myUser)
+			info, _ := conn.Call("mm.login", []interface{}{myUser})
+			tuples := info.Tuples()
+			//userId := tuples[0][0]
+			//guildId := tuples[1][0]
+			//fmt.Println(userId)
+			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
+			tuples = info.Tuples()
+			guildName := tuples[0][0].(string)
+			guildLabel.SetText(guildName)
+
+		}
+
+	})
+
+	// Отображаем все виджеты в окне
+	win.ShowAll()
+
+	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
+	// выполнится gtk.MainQuit()
+	gtk.Main()
+
+	/////////////////////////////////////////////////////////////////////////////
 
 	_, _ = conn.Call("mm.insertAll", []interface{}{})
 
@@ -42,50 +114,30 @@ func main() {
 	tuples := info.Tuples()
 	userId := tuples[0][0]
 	guildId := tuples[1][0]
-	fmt.Println(userId)
+	//fmt.Println(userId)
 	guildName, _ := conn.Call("mm.user_guild", []interface{}{myUser})
 
 	for {
 		fmt.Print("Введите сообщение: ")
 		myscanner.Scan()
 		msg := myscanner.Text()
-		fmt.Printf("%s(%s): %s", myUser, guildName.Tuples()[0][0], msg)
-		fmt.Println("")
-		_, _ = conn.Call("mm.new_msg", []interface{}{msg, guildId, userId})
-		//fmt.Println(funcres)
+		if msg == "login" {
+			fmt.Print("Введите имя пользователя: ")
+			myscanner.Scan()
+			myUser = myscanner.Text()
+			fmt.Println(myUser)
+			info, _ = conn.Call("mm.login", []interface{}{myUser})
+			tuples = info.Tuples()
+			userId = tuples[0][0]
+			guildId = tuples[1][0]
+			//fmt.Println(userId)
+			guildName, _ = conn.Call("mm.user_guild", []interface{}{myUser})
+		} else {
+			fmt.Printf("%s(%s): %s", myUser, guildName.Tuples()[0][0], msg)
+			fmt.Println("")
+			_, _ = conn.Call("mm.new_msg", []interface{}{msg, guildId, userId})
+			//fmt.Println(funcres)
+		}
 	}
-
-	//spaceName := "user"
-	//indexName := "primary"
-	//idFn := conn.Schema.Spaces[spaceName].Fields["user_id"].Id
-	//bandNameFn := conn.Schema.Spaces[spaceName].Fields["user_name"].Id
-	//
-	//var tuplesPerRequest uint32 = 2
-	//cursor := []interface{}{}
-	//
-	//for {
-	//	resp, err := conn.Select(spaceName, indexName, 0, tuplesPerRequest, tarantool.IterGt, cursor)
-	//	if err != nil {
-	//		log.Fatalf("Failed to select: %s", err)
-	//	}
-	//
-	//	if resp.Code != tarantool.OkCode {
-	//		log.Fatalf("Select failed: %s", resp.Error)
-	//	}
-	//
-	//	if len(resp.Data) == 0 {
-	//		break
-	//	}
-	//
-	//	fmt.Println("Iteration")
-	//
-	//	tuples := resp.Tuples()
-	//	for _, tuple := range tuples {
-	//		fmt.Printf("\t%v\n", tuple)
-	//	}
-	//
-	//	lastTuple := tuples[len(tuples)-1]
-	//	cursor = []interface{}{lastTuple[idFn], lastTuple[bandNameFn]}
-	//}
 
 }
