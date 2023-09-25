@@ -2,15 +2,19 @@ package main
 
 import (
 	"GoTarantool/Server"
-	"bufio"
 	"fmt"
 	"github.com/gotk3/gotk3/gtk"
 	"log"
-	"os"
 	"time"
 )
 
 func main() {
+	var myUser string
+	var guildName string
+	var guildId uint64
+	var userId uint64
+	isLogin := false
+
 	conn := Server.Server()
 	defer conn.Close()
 
@@ -46,9 +50,15 @@ func main() {
 	obj, _ = b.GetObject("login_entry")
 	loginEntry := obj.(*gtk.Entry)
 
+	obj, _ = b.GetObject("msg_entry")
+	msgEntry := obj.(*gtk.Entry)
+
 	// Получаем кнопку
 	obj, _ = b.GetObject("login_btn")
 	loginBtn := obj.(*gtk.Button)
+
+	obj, _ = b.GetObject("msg_btn")
+	msgBtn := obj.(*gtk.Button)
 
 	// Получаем метку
 	obj, _ = b.GetObject("msg_box")
@@ -58,37 +68,73 @@ func main() {
 	obj, _ = b.GetObject("guild_label")
 	guildLabel := obj.(*gtk.Label)
 
-	textLabel, _ := msgBox.GetText()
-
-	t := time.NewTimer(3 * time.Second)
-	go func() {
-		for {
-			t.Reset(1 * time.Second)
-			textLabel, _ = msgBox.GetText()
-			msgBox.SetText(textLabel + "*" + "\n")
-			<-t.C
-		}
-	}()
-
 	// Сигнал по нажатию на кнопку
+
 	loginBtn.Connect("clicked", func() {
 
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
-			myUser, _ := loginEntry.GetText()
-			textLabel, _ = msgBox.GetText()
+			myUser, _ = loginEntry.GetText()
 			print(myUser)
 			info, _ := conn.Call("mm.login", []interface{}{myUser})
 			tuples := info.Tuples()
-			//userId := tuples[0][0]
-			//guildId := tuples[1][0]
+			userId = tuples[0][0].(uint64)
+			guildId = tuples[1][0].(uint64)
 			//fmt.Println(userId)
 			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
 			tuples = info.Tuples()
-			guildName := tuples[0][0].(string)
+			guildName = tuples[0][0].(string)
 			guildLabel.SetText(guildName)
+			info, _ = conn.Call("mm.guild_msg", []interface{}{guildId})
+			fmt.Println(info)
+			messages := info.Tuples()
+			allMsg := ""
+			for i := range messages[0] {
+				newMsg := myUser + "(" + guildName + "): " + messages[0][i].(string)
+				allMsg = allMsg + newMsg + "\n"
+				fmt.Println(messages[0][i])
+			}
+			//allMsg = myUser + "(" + guildName + "): " + allMsg
+			msgBox.SetText(allMsg)
 
+			t := time.NewTimer(1 * time.Second)
+			if isLogin == false {
+				isLogin = true
+				go func() {
+					for {
+
+						t.Reset(1 * time.Second)
+						info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+						fmt.Println(info)
+						messages := info.Tuples()
+						//msgBox.SetText("")
+						allMsg := ""
+						for i := range messages[0] {
+							//msgBox.SetText("*")
+							newMsg := myUser + "(" + guildName + "): " + messages[0][i].(string)
+							allMsg = allMsg + newMsg + "\n"
+							fmt.Println(messages[0][i])
+						}
+						//allMsg = myUser + "(" + guildName + "): " + allMsg
+						msgBox.SetText(allMsg)
+						fmt.Println(allMsg)
+						<-t.C
+					}
+
+				}()
+
+				// Увеличиваем счетчик wait group на 1
+			}
 		}
+
+	})
+
+	msgBtn.Connect("clicked", func() {
+		newMsg, _ := msgEntry.GetText()
+		fmt.Println(newMsg)
+		fmt.Println(myUser)
+		fmt.Println(guildName)
+		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
 
 	})
 
@@ -98,46 +144,5 @@ func main() {
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
 	// выполнится gtk.MainQuit()
 	gtk.Main()
-
-	/////////////////////////////////////////////////////////////////////////////
-
-	_, _ = conn.Call("mm.insertAll", []interface{}{})
-
-	myscanner := bufio.NewScanner(os.Stdin)
-
-	fmt.Print("Введите имя пользователя: ")
-	myscanner.Scan()
-	myUser := myscanner.Text()
-	fmt.Println(myUser)
-
-	info, _ := conn.Call("mm.login", []interface{}{myUser})
-	tuples := info.Tuples()
-	userId := tuples[0][0]
-	guildId := tuples[1][0]
-	//fmt.Println(userId)
-	guildName, _ := conn.Call("mm.user_guild", []interface{}{myUser})
-
-	for {
-		fmt.Print("Введите сообщение: ")
-		myscanner.Scan()
-		msg := myscanner.Text()
-		if msg == "login" {
-			fmt.Print("Введите имя пользователя: ")
-			myscanner.Scan()
-			myUser = myscanner.Text()
-			fmt.Println(myUser)
-			info, _ = conn.Call("mm.login", []interface{}{myUser})
-			tuples = info.Tuples()
-			userId = tuples[0][0]
-			guildId = tuples[1][0]
-			//fmt.Println(userId)
-			guildName, _ = conn.Call("mm.user_guild", []interface{}{myUser})
-		} else {
-			fmt.Printf("%s(%s): %s", myUser, guildName.Tuples()[0][0], msg)
-			fmt.Println("")
-			_, _ = conn.Call("mm.new_msg", []interface{}{msg, guildId, userId})
-			//fmt.Println(funcres)
-		}
-	}
 
 }
