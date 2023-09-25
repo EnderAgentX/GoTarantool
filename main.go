@@ -80,7 +80,7 @@ func main() {
 			tuples := info.Tuples()
 			userId = tuples[0][0].(uint64)
 			guildId = tuples[1][0].(uint64)
-			//fmt.Println(userId)
+			fmt.Println(tuples)
 			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
@@ -89,6 +89,7 @@ func main() {
 			fmt.Println(info)
 			messages := info.Tuples()
 			allMsg := ""
+
 			for i := range messages[0] {
 				newMsg := myUser + "(" + guildName + "): " + messages[0][i].(string)
 				allMsg = allMsg + newMsg + "\n"
