@@ -68,6 +68,9 @@ func main() {
 	obj, _ = b.GetObject("guild_label")
 	guildLabel := obj.(*gtk.Label)
 
+	obj, _ = b.GetObject("msg_scroll")
+	scrolledWindow := obj.(*gtk.ScrolledWindow)
+
 	// Сигнал по нажатию на кнопку
 
 	loginBtn.Connect("clicked", func() {
@@ -102,6 +105,14 @@ func main() {
 			}
 			//allMsg = myUser + "(" + guildName + "): " + allMsg
 			msgBox.SetText(allMsg)
+			scrolledWindow.Connect("size-allocate", func() {
+				adjustment := scrolledWindow.GetVAdjustment()
+				if err != nil {
+					log.Fatal("Ошибка при получении VAdjustment:", err)
+				}
+
+				adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+			})
 			fmt.Println(allMsg)
 
 			t := time.NewTimer(1 * time.Second)
@@ -127,7 +138,16 @@ func main() {
 						}
 						//allMsg = myUser + "(" + guildName + "): " + allMsg
 						msgBox.SetText(allMsg)
+						scrolledWindow.Connect("size-allocate", func() {
+							adjustment := scrolledWindow.GetVAdjustment()
+							if err != nil {
+								log.Fatal("Ошибка при получении VAdjustment:", err)
+							}
+
+							adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+						})
 						fmt.Println(allMsg)
+
 						<-t.C
 					}
 
@@ -145,6 +165,30 @@ func main() {
 		fmt.Println(myUser)
 		fmt.Println(guildName)
 		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
+		info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+		fmt.Println(info)
+		messages := info.Tuples()
+		//msgBox.SetText("")
+		allMsg := ""
+		for i := range messages {
+			msgText := messages[i][0].(string)
+			msgUserId := messages[i][1]
+			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+
+			newMsg := msgUserName + "(" + guildName + "): " + msgText
+			allMsg = allMsg + newMsg + "\n"
+		}
+		//allMsg = myUser + "(" + guildName + "): " + allMsg
+		msgBox.SetText(allMsg)
+		scrolledWindow.Connect("size-allocate", func() {
+			adjustment := scrolledWindow.GetVAdjustment()
+			if err != nil {
+				log.Fatal("Ошибка при получении VAdjustment:", err)
+			}
+
+			adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+		})
 
 	})
 
