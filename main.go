@@ -90,13 +90,19 @@ func main() {
 			messages := info.Tuples()
 			allMsg := ""
 
-			for i := range messages[0] {
-				newMsg := myUser + "(" + guildName + "): " + messages[0][i].(string)
+			for i := range messages {
+				msgText := messages[i][0].(string)
+				msgUserId := messages[i][1]
+				msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+				msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+
+				newMsg := msgUserName + "(" + guildName + "): " + msgText
 				allMsg = allMsg + newMsg + "\n"
-				fmt.Println(messages[0][i])
+
 			}
 			//allMsg = myUser + "(" + guildName + "): " + allMsg
 			msgBox.SetText(allMsg)
+			fmt.Println(allMsg)
 
 			t := time.NewTimer(1 * time.Second)
 			if isLogin == false {
@@ -105,16 +111,19 @@ func main() {
 					for {
 
 						t.Reset(1 * time.Second)
-						info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+						info, _ = conn.Call("mm.guild_msg", []interface{}{guildId})
 						fmt.Println(info)
-						messages := info.Tuples()
+						messages = info.Tuples()
 						//msgBox.SetText("")
-						allMsg := ""
-						for i := range messages[0] {
-							//msgBox.SetText("*")
-							newMsg := myUser + "(" + guildName + "): " + messages[0][i].(string)
+						allMsg = ""
+						for i := range messages {
+							msgText := messages[i][0].(string)
+							msgUserId := messages[i][1]
+							msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+							msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+
+							newMsg := msgUserName + "(" + guildName + "): " + msgText
 							allMsg = allMsg + newMsg + "\n"
-							fmt.Println(messages[0][i])
 						}
 						//allMsg = myUser + "(" + guildName + "): " + allMsg
 						msgBox.SetText(allMsg)
