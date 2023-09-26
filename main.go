@@ -2,17 +2,18 @@ package main
 
 import (
 	"GoTarantool/Server"
-	"fmt"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/tarantool/go-tarantool"
 	"log"
 	"time"
 )
 
+var myUser string
+var guildName string
+var guildId uint64
+var userId uint64
+
 func main() {
-	var myUser string
-	var guildName string
-	var guildId uint64
-	var userId uint64
 	isLogin := false
 
 	conn := Server.Server()
@@ -83,37 +84,12 @@ func main() {
 			tuples := info.Tuples()
 			userId = tuples[0][0].(uint64)
 			guildId = tuples[1][0].(uint64)
-			fmt.Println(tuples)
 			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
 			guildLabel.SetText(guildName)
-			info, _ = conn.Call("mm.guild_msg", []interface{}{guildId})
-			fmt.Println(info)
-			messages := info.Tuples()
-			allMsg := ""
-
-			for i := range messages {
-				msgText := messages[i][0].(string)
-				msgUserId := messages[i][1]
-				msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
-				msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
-
-				newMsg := msgUserName + "(" + guildName + "): " + msgText
-				allMsg = allMsg + newMsg + "\n"
-
-			}
-			//allMsg = myUser + "(" + guildName + "): " + allMsg
-			msgBox.SetText(allMsg)
-			scrolledWindow.Connect("size-allocate", func() {
-				adjustment := scrolledWindow.GetVAdjustment()
-				if err != nil {
-					log.Fatal("Ошибка при получении VAdjustment:", err)
-				}
-
-				adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-			})
-			fmt.Println(allMsg)
+			GetMsg(conn, msgBox)
+			AutoScroll(scrolledWindow)
 
 			t := time.NewTimer(1 * time.Second)
 			if isLogin == false {
@@ -122,32 +98,8 @@ func main() {
 					for {
 
 						t.Reset(1 * time.Second)
-						info, _ = conn.Call("mm.guild_msg", []interface{}{guildId})
-						fmt.Println(info)
-						messages = info.Tuples()
-						//msgBox.SetText("")
-						allMsg = ""
-						for i := range messages {
-							msgText := messages[i][0].(string)
-							msgUserId := messages[i][1]
-							msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
-							msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
-
-							newMsg := msgUserName + "(" + guildName + "): " + msgText
-							allMsg = allMsg + newMsg + "\n"
-						}
-						//allMsg = myUser + "(" + guildName + "): " + allMsg
-						msgBox.SetText(allMsg)
-						scrolledWindow.Connect("size-allocate", func() {
-							adjustment := scrolledWindow.GetVAdjustment()
-							if err != nil {
-								log.Fatal("Ошибка при получении VAdjustment:", err)
-							}
-
-							adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-						})
-						fmt.Println(allMsg)
-
+						GetMsg(conn, msgBox)
+						AutoScroll(scrolledWindow)
 						<-t.C
 					}
 
@@ -161,34 +113,9 @@ func main() {
 
 	msgBtn.Connect("clicked", func() {
 		newMsg, _ := msgEntry.GetText()
-		fmt.Println(newMsg)
-		fmt.Println(myUser)
-		fmt.Println(guildName)
 		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
-		info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
-		fmt.Println(info)
-		messages := info.Tuples()
-		//msgBox.SetText("")
-		allMsg := ""
-		for i := range messages {
-			msgText := messages[i][0].(string)
-			msgUserId := messages[i][1]
-			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
-			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
-
-			newMsg := msgUserName + "(" + guildName + "): " + msgText
-			allMsg = allMsg + newMsg + "\n"
-		}
-		//allMsg = myUser + "(" + guildName + "): " + allMsg
-		msgBox.SetText(allMsg)
-		scrolledWindow.Connect("size-allocate", func() {
-			adjustment := scrolledWindow.GetVAdjustment()
-			if err != nil {
-				log.Fatal("Ошибка при получении VAdjustment:", err)
-			}
-
-			adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-		})
+		GetMsg(conn, msgBox)
+		AutoScroll(scrolledWindow)
 
 	})
 
@@ -199,4 +126,27 @@ func main() {
 	// выполнится gtk.MainQuit()
 	gtk.Main()
 
+}
+
+func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
+	scrolledWindow.Connect("size-allocate", func() {
+		adjustment := scrolledWindow.GetVAdjustment()
+		adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+	})
+}
+
+func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
+	info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+	messages := info.Tuples()
+	allMsg := ""
+	for i := range messages {
+		msgText := messages[i][0].(string)
+		msgUserId := messages[i][1]
+		msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+		msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+
+		newMsg := msgUserName + "(" + guildName + "): " + msgText
+		allMsg = allMsg + newMsg + "\n"
+	}
+	msgBox.SetText(allMsg)
 }
