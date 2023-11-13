@@ -14,6 +14,13 @@ var guildName string
 var guildId uint64
 var userId uint64
 
+type TimedMsg struct {
+	msg  string
+	time uint64
+}
+
+var messagesArr = make([]TimedMsg, 0)
+
 func main() {
 	isLogin := false
 
@@ -80,7 +87,6 @@ func main() {
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
 			myUser, _ = loginEntry.GetText()
-			print(myUser)
 			info, _ := conn.Call("mm.login", []interface{}{myUser})
 			tuples := info.Tuples()
 			userId = tuples[0][0].(uint64)
@@ -138,22 +144,38 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 
 func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 	info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+	messagesArr = messagesArr[:0]
 	messages := info.Tuples()
-	fmt.Println(len(messages[0]))
-	fmt.Println(len(messages[0]))
 	if len(messages[0]) != 0 {
 		allMsg := ""
 		for i := range messages {
 			msgText := messages[i][0].(string)
 			msgUserId := messages[i][1]
+			msgTime := messages[i][2].(uint64)
 			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
 			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
 			newMsg := msgUserName + "(" + guildName + "): " + msgText
+
+			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
+
 			allMsg = allMsg + newMsg + "\n"
 		}
 		msgBox.SetText(allMsg)
+		fmt.Println(messagesArr)
+
+		lastTimedMsg := messagesArr[len(messagesArr)-1].time
+		fmt.Println(lastTimedMsg)
+		infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{lastTimedMsg})
+		newMessages := infoTimedMsg.Tuples()
+		if len(newMessages[0]) != 0 {
+			for i := range newMessages {
+				fmt.Println(newMessages[i][1].(string))
+			}
+		}
+
 	} else {
 		msgBox.SetText("")
+		messagesArr = messagesArr[:0]
 	}
 }
