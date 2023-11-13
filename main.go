@@ -2,6 +2,7 @@ package main
 
 import (
 	"GoTarantool/Server"
+	"fmt"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/tarantool/go-tarantool"
 	"log"
@@ -138,15 +139,21 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 	info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
 	messages := info.Tuples()
-	allMsg := ""
-	for i := range messages {
-		msgText := messages[i][0].(string)
-		msgUserId := messages[i][1]
-		msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
-		msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+	fmt.Println(len(messages[0]))
+	fmt.Println(len(messages[0]))
+	if len(messages[0]) != 0 {
+		allMsg := ""
+		for i := range messages {
+			msgText := messages[i][0].(string)
+			msgUserId := messages[i][1]
+			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
-		newMsg := msgUserName + "(" + guildName + "): " + msgText
-		allMsg = allMsg + newMsg + "\n"
+			newMsg := msgUserName + "(" + guildName + "): " + msgText
+			allMsg = allMsg + newMsg + "\n"
+		}
+		msgBox.SetText(allMsg)
+	} else {
+		msgBox.SetText("")
 	}
-	msgBox.SetText(allMsg)
 }
