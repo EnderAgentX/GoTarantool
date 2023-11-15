@@ -95,7 +95,8 @@ func main() {
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
 			guildLabel.SetText(guildName)
-			GetMsg(conn, msgBox)
+			GetMsgTest(conn, msgBox)
+			//GetMsg(conn, msgBox)
 			AutoScroll(scrolledWindow)
 
 			t := time.NewTimer(1 * time.Second)
@@ -105,7 +106,8 @@ func main() {
 					for {
 
 						t.Reset(1 * time.Second)
-						GetMsg(conn, msgBox)
+						//GetMsg(conn, msgBox)
+						GetMsgTest(conn, msgBox)
 						AutoScroll(scrolledWindow)
 						<-t.C
 					}
@@ -177,5 +179,38 @@ func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 	} else {
 		msgBox.SetText("")
 		messagesArr = messagesArr[:0]
+	}
+}
+
+func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
+	var lastTimedMsg uint64
+	if len(messagesArr) == 0 {
+		lastTimedMsg = 0
+	} else {
+		lastTimedMsg = messagesArr[len(messagesArr)-1].time
+	}
+	infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{lastTimedMsg})
+	newMessages := infoTimedMsg.Tuples()
+
+	if len(newMessages[0]) != 0 {
+		allMsg := ""
+		fmt.Println(newMessages[0])
+		for i := range newMessages {
+			msgText := newMessages[i][1].(string)
+			msgUserId := newMessages[i][0]
+			msgTime := newMessages[i][4].(uint64)
+
+			fmt.Println(msgTime)
+
+			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId}) //ОШИБКА
+			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+			fmt.Println("Проверка")
+
+			newMsg := msgUserName + "(" + guildName + "): " + msgText
+
+			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
+
+			allMsg = allMsg + newMsg + "\n"
+		}
 	}
 }
