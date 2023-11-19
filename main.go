@@ -19,6 +19,12 @@ type TimedMsg struct {
 	time uint64
 }
 
+type MessageStruct struct {
+	message string
+	userId  uint64
+	msgTime uint64
+}
+
 var messagesArr = make([]TimedMsg, 0)
 
 func main() {
@@ -95,6 +101,8 @@ func main() {
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
 			guildLabel.SetText(guildName)
+			msgBox.SetText("")
+			messagesArr = messagesArr[:0]
 			GetMsgTest(conn, msgBox)
 			//GetMsg(conn, msgBox)
 			AutoScroll(scrolledWindow)
@@ -123,7 +131,7 @@ func main() {
 	msgBtn.Connect("clicked", func() {
 		newMsg, _ := msgEntry.GetText()
 		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
-		GetMsg(conn, msgBox)
+		GetMsgTest(conn, msgBox)
 		AutoScroll(scrolledWindow)
 
 	})
@@ -185,32 +193,47 @@ func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	var lastTimedMsg uint64
 	if len(messagesArr) == 0 {
-		lastTimedMsg = 0
+		lastTimedMsg = 0 // В самом начале загружаем все сообщения
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
-	infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{lastTimedMsg})
-	newMessages := infoTimedMsg.Tuples()
+	//lastTimedMsg = 1699865900
+	infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{guildId, lastTimedMsg})
+	newMessagesCntTuples := infoTimedMsg.Tuples()
+	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+	//fmt.Println(cntMsg)
+	fmt.Println(lastTimedMsg)
 
-	if len(newMessages[0]) != 0 {
+	var newMessages []MessageStruct
+	for i := 0; i < cntMsg; i++ {
+		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
+		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(uint64), newMessagesTuples[2].(uint64)})
+	}
+	//fmt.Println("///")
+	fmt.Println(newMessages)
+	fmt.Println("Кол-во", cntMsg)
+
+	if cntMsg != 0 {
 		allMsg := ""
-		fmt.Println(newMessages[0])
-		for i := range newMessages {
-			msgText := newMessages[i][1].(string)
-			msgUserId := newMessages[i][0]
-			msgTime := newMessages[i][4].(uint64)
-
-			fmt.Println(msgTime)
+		for i := 0; i < cntMsg; i++ {
+			//fmt.Println("Начало цикла")
+			msgText := newMessages[i].message
+			msgUserId := newMessages[i].userId
+			msgTime := newMessages[i].msgTime
 
 			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId}) //ОШИБКА
 			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
-			fmt.Println("Проверка")
 
 			newMsg := msgUserName + "(" + guildName + "): " + msgText
 
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
 			allMsg = allMsg + newMsg + "\n"
+			//fmt.Println("Конец цикла")
 		}
+		tText, _ := msgBox.GetText()
+		msgBox.SetText(tText + allMsg)
+		fmt.Println("Массив", messagesArr)
+
 	}
 }
