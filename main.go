@@ -11,8 +11,8 @@ import (
 
 var myUser string
 var guildName string
-var guildId uint64
-var userId uint64
+var guildId string
+var userId string
 
 type TimedMsg struct {
 	msg  string
@@ -21,7 +21,7 @@ type TimedMsg struct {
 
 type MessageStruct struct {
 	message string
-	userId  uint64
+	userId  string
 	msgTime uint64
 }
 
@@ -95,8 +95,8 @@ func main() {
 			myUser, _ = loginEntry.GetText()
 			info, _ := conn.Call("mm.login", []interface{}{myUser})
 			tuples := info.Tuples()
-			userId = tuples[0][0].(uint64)
-			guildId = tuples[1][0].(uint64)
+			userId = tuples[0][0].(string)
+			guildId = tuples[1][0].(string)
 			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
@@ -197,26 +197,22 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
-	//lastTimedMsg = 1699865900
 	infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{guildId, lastTimedMsg})
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
-	//fmt.Println(cntMsg)
 	fmt.Println(lastTimedMsg)
 
 	var newMessages []MessageStruct
 	for i := 0; i < cntMsg; i++ {
 		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
-		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(uint64), newMessagesTuples[2].(uint64)})
+		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64)})
 	}
-	//fmt.Println("///")
 	fmt.Println(newMessages)
 	fmt.Println("Кол-во", cntMsg)
 
 	if cntMsg != 0 {
 		allMsg := ""
 		for i := 0; i < cntMsg; i++ {
-			//fmt.Println("Начало цикла")
 			msgText := newMessages[i].message
 			msgUserId := newMessages[i].userId
 			msgTime := newMessages[i].msgTime
@@ -229,7 +225,6 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
 			allMsg = allMsg + newMsg + "\n"
-			//fmt.Println("Конец цикла")
 		}
 		tText, _ := msgBox.GetText()
 		msgBox.SetText(tText + allMsg)
