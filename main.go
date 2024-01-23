@@ -49,6 +49,7 @@ func main() {
 
 	// Получаем объект главного окна по ID
 	obj, err := b.GetObject("main_window")
+	obj2, err := b.GetObject("regWin")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
@@ -61,6 +62,11 @@ func main() {
 		gtk.MainQuit()
 	})
 
+	win2 := obj2.(*gtk.Window)
+	win2.Connect("delete-event", func() {
+		win2.Hide()
+	})
+
 	// Получаем поле ввода
 	obj, _ = b.GetObject("login_entry")
 	loginEntry := obj.(*gtk.Entry)
@@ -71,6 +77,9 @@ func main() {
 	// Получаем кнопку
 	obj, _ = b.GetObject("login_btn")
 	loginBtn := obj.(*gtk.Button)
+
+	obj, _ = b.GetObject("reg_btn")
+	regBtn := obj.(*gtk.Button)
 
 	obj, _ = b.GetObject("msg_btn")
 	msgBtn := obj.(*gtk.Button)
@@ -85,6 +94,9 @@ func main() {
 
 	obj, _ = b.GetObject("msg_scroll")
 	scrolledWindow := obj.(*gtk.ScrolledWindow)
+
+	obj2, _ = b.GetObject("close_reg_btn")
+	closeRegBtn := obj2.(*gtk.Button)
 
 	// Сигнал по нажатию на кнопку
 
@@ -133,6 +145,17 @@ func main() {
 		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
 		GetMsgTest(conn, msgBox)
 		AutoScroll(scrolledWindow)
+
+	})
+
+	regBtn.Connect("clicked", func() {
+		fmt.Println("test")
+		win2.ShowAll()
+
+	})
+
+	closeRegBtn.Connect("clicked", func() {
+		win2.Hide()
 
 	})
 

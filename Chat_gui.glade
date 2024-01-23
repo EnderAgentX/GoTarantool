@@ -5,8 +5,10 @@
   <object class="GtkWindow" id="main_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Чат</property>
+    <property name="window-position">center-always</property>
     <property name="default-width">640</property>
     <property name="default-height">320</property>
+    <property name="gravity">center</property>
     <child>
       <!-- n-columns=5 n-rows=5 -->
       <object class="GtkGrid">
@@ -168,6 +170,171 @@
             <property name="top-attach">1</property>
             <property name="width">2</property>
           </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="reg_btn">
+            <property name="label" translatable="yes">Регистрация</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkWindow" id="regWin">
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Регистрация</property>
+    <property name="window-position">center-always</property>
+    <property name="default-width">500</property>
+    <property name="default-height">400</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <child>
+      <!-- n-columns=4 n-rows=6 -->
+      <object class="GtkGrid">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkButton" id="close_reg_btn">
+            <property name="label" translatable="yes">Выйти</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+            <property name="vexpand">True</property>
+            <property name="image-position">bottom</property>
+          </object>
+          <packing>
+            <property name="left-attach">3</property>
+            <property name="top-attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="label" translatable="yes">Зарегистрироваться</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+            <property name="vexpand">True</property>
+            <property name="image-position">bottom</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="margin-top">100</property>
+            <property name="margin-bottom">100</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+                <property name="label" translatable="yes">Логин</property>
+                <property name="justify">center</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+                <property name="label" translatable="yes">Пароль</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">0</property>
+            <property name="width">2</property>
+            <property name="height">4</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
         </child>
         <child>
           <placeholder/>
