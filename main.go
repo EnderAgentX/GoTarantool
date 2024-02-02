@@ -105,11 +105,11 @@ func main() {
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
 			myUser, _ = loginEntry.GetText()
-			info, _ := conn.Call("mm.login", []interface{}{myUser})
+			info, _ := conn.Call("fn.login", []interface{}{myUser})
 			tuples := info.Tuples()
 			userId = tuples[0][0].(string)
 			guildId = tuples[1][0].(string)
-			info, _ = conn.Call("mm.user_guild", []interface{}{myUser})
+			info, _ = conn.Call("fn.user_guild", []interface{}{myUser})
 			tuples = info.Tuples()
 			guildName = tuples[0][0].(string)
 			guildLabel.SetText(guildName)
@@ -142,7 +142,7 @@ func main() {
 
 	msgBtn.Connect("clicked", func() {
 		newMsg, _ := msgEntry.GetText()
-		_, _ = conn.Call("mm.new_msg", []interface{}{newMsg, guildId, userId})
+		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, guildId, userId})
 		GetMsgTest(conn, msgBox)
 		AutoScroll(scrolledWindow)
 
@@ -176,7 +176,7 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 }
 
 func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
-	info, _ := conn.Call("mm.guild_msg", []interface{}{guildId})
+	info, _ := conn.Call("fn.guild_msg", []interface{}{guildId})
 	messagesArr = messagesArr[:0]
 	messages := info.Tuples()
 	if len(messages[0]) != 0 {
@@ -185,7 +185,7 @@ func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 			msgText := messages[i][0].(string)
 			msgUserId := messages[i][1]
 			msgTime := messages[i][2].(uint64)
-			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId})
+			msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUserId})
 			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
 			newMsg := msgUserName + "(" + guildName + "): " + msgText
@@ -199,7 +199,7 @@ func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 
 		lastTimedMsg := messagesArr[len(messagesArr)-1].time
 		fmt.Println(lastTimedMsg)
-		infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{lastTimedMsg})
+		infoTimedMsg, _ := conn.Call("fn.time_guild_msg", []interface{}{lastTimedMsg})
 		newMessages := infoTimedMsg.Tuples()
 		if len(newMessages[0]) != 0 {
 			for i := range newMessages {
@@ -220,7 +220,7 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
-	infoTimedMsg, _ := conn.Call("mm.time_guild_msg", []interface{}{guildId, lastTimedMsg})
+	infoTimedMsg, _ := conn.Call("fn.time_guild_msg", []interface{}{guildId, lastTimedMsg})
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
 	fmt.Println(lastTimedMsg)
@@ -240,7 +240,7 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 			msgUserId := newMessages[i].userId
 			msgTime := newMessages[i].msgTime
 
-			msgUserNameTuples, _ := conn.Call("mm.get_name", []interface{}{msgUserId}) //ОШИБКА
+			msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUserId}) //ОШИБКА
 			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
 			newMsg := msgUserName + "(" + guildName + "): " + msgText
