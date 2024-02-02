@@ -110,6 +110,15 @@ func main() {
 	obj, _ = b.GetObject("pass_reg_entry")
 	passRegEntry := obj.(*gtk.Entry)
 
+	obj, _ = b.GetObject("listbox_groups")
+	groupsListbox := obj.(*gtk.ListBox)
+
+	obj, _ = b.GetObject("add_group_entry")
+	addGroupEntry := obj.(*gtk.Entry)
+
+	obj, _ = b.GetObject("add_group_btn")
+	addGroupBtn := obj.(*gtk.Button)
+
 	// Сигнал по нажатию на кнопку
 
 	loginBtn.Connect("clicked", func() {
@@ -151,6 +160,17 @@ func main() {
 			//	// Увеличиваем счетчик wait group на 1
 			//}
 		}
+
+	})
+
+	addGroupBtn.Connect("clicked", func() {
+		groupName, _ := addGroupEntry.GetText()
+		fmt.Println(groupName)
+		rowGroup, _ := gtk.ListBoxRowNew()
+		labelGroup, _ := gtk.LabelNew(groupName)
+		rowGroup.Add(labelGroup)
+		groupsListbox.Insert(rowGroup, 0)
+		win.ShowAll()
 
 	})
 
