@@ -6,10 +6,10 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/tarantool/go-tarantool"
 	"log"
-	"time"
 )
 
 var myUser string
+var myPass string
 var guildName string
 var guildId string
 var userId string
@@ -28,7 +28,7 @@ type MessageStruct struct {
 var messagesArr = make([]TimedMsg, 0)
 
 func main() {
-	isLogin := false
+	//isLogin := false
 
 	conn := Server.Server()
 	defer conn.Close()
@@ -71,6 +71,9 @@ func main() {
 	obj, _ = b.GetObject("login_entry")
 	loginEntry := obj.(*gtk.Entry)
 
+	obj, _ = b.GetObject("password_entry")
+	passEntry := obj.(*gtk.Entry)
+
 	obj, _ = b.GetObject("msg_entry")
 	msgEntry := obj.(*gtk.Entry)
 
@@ -89,14 +92,23 @@ func main() {
 	msgBox := obj.(*gtk.Label)
 	msgBox.SetText("")
 
-	obj, _ = b.GetObject("guild_label")
-	guildLabel := obj.(*gtk.Label)
+	//obj, _ = b.GetObject("guild_label")
+	//guildLabel := obj.(*gtk.Label)
 
 	obj, _ = b.GetObject("msg_scroll")
 	scrolledWindow := obj.(*gtk.ScrolledWindow)
 
 	obj2, _ = b.GetObject("close_reg_btn")
 	closeRegBtn := obj2.(*gtk.Button)
+
+	obj, _ = b.GetObject("newuser_reg_btn")
+	newUserRegBtn := obj.(*gtk.Button)
+
+	obj, _ = b.GetObject("login_reg_entry")
+	loginRegEntry := obj.(*gtk.Entry)
+
+	obj, _ = b.GetObject("pass_reg_entry")
+	passRegEntry := obj.(*gtk.Entry)
 
 	// Сигнал по нажатию на кнопку
 
@@ -105,37 +117,39 @@ func main() {
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
 			myUser, _ = loginEntry.GetText()
-			info, _ := conn.Call("fn.login", []interface{}{myUser})
-			tuples := info.Tuples()
-			userId = tuples[0][0].(string)
-			guildId = tuples[1][0].(string)
-			info, _ = conn.Call("fn.user_guild", []interface{}{myUser})
-			tuples = info.Tuples()
-			guildName = tuples[0][0].(string)
-			guildLabel.SetText(guildName)
-			msgBox.SetText("")
-			messagesArr = messagesArr[:0]
-			GetMsgTest(conn, msgBox)
-			//GetMsg(conn, msgBox)
-			AutoScroll(scrolledWindow)
-
-			t := time.NewTimer(1 * time.Second)
-			if isLogin == false {
-				isLogin = true
-				go func() {
-					for {
-
-						t.Reset(1 * time.Second)
-						//GetMsg(conn, msgBox)
-						GetMsgTest(conn, msgBox)
-						AutoScroll(scrolledWindow)
-						<-t.C
-					}
-
-				}()
-
-				// Увеличиваем счетчик wait group на 1
-			}
+			myPass, _ = passEntry.GetText()
+			info, _ := conn.Call("fn.login", []interface{}{myUser, myPass})
+			fmt.Println(info)
+			//tuples := info.Tuples()
+			//userId = tuples[0][0].(string)
+			//guildId = tuples[1][0].(string)
+			//info, _ = conn.Call("fn.user_guild", []interface{}{myUser})
+			//tuples = info.Tuples()
+			//guildName = tuples[0][0].(string)
+			//guildLabel.SetText(guildName)
+			//msgBox.SetText("")
+			//messagesArr = messagesArr[:0]
+			//GetMsgTest(conn, msgBox)
+			////GetMsg(conn, msgBox)
+			//AutoScroll(scrolledWindow)
+			//
+			//t := time.NewTimer(1 * time.Second)
+			//if isLogin == false {
+			//	isLogin = true
+			//	go func() {
+			//		for {
+			//
+			//			t.Reset(1 * time.Second)
+			//			//GetMsg(conn, msgBox)
+			//			GetMsgTest(conn, msgBox)
+			//			AutoScroll(scrolledWindow)
+			//			<-t.C
+			//		}
+			//
+			//	}()
+			//
+			//	// Увеличиваем счетчик wait group на 1
+			//}
 		}
 
 	})
@@ -152,6 +166,12 @@ func main() {
 		fmt.Println("test")
 		win2.ShowAll()
 
+	})
+	newUserRegBtn.Connect("clicked", func() {
+		newLogin, _ := loginRegEntry.GetText()
+		newPass, _ := passRegEntry.GetText()
+		_, _ = conn.Call("fn.new_user", []interface{}{newLogin, newPass})
+		fmt.Println("Успешная регистрация!")
 	})
 
 	closeRegBtn.Connect("clicked", func() {
