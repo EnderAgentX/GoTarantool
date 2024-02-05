@@ -3,7 +3,7 @@ module GoTarantool
 go 1.20
 
 require (
-	github.com/gotk3/gotk3 v0.6.2
+	github.com/gotk3/gotk3 v0.6.3
 	github.com/tarantool/go-tarantool v1.12.1
 )
 

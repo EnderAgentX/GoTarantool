@@ -29,7 +29,6 @@ var messagesArr = make([]TimedMsg, 0)
 
 func main() {
 	//isLogin := false
-
 	conn := Server.Server()
 	defer conn.Close()
 
@@ -95,6 +94,15 @@ func main() {
 	//obj, _ = b.GetObject("guild_label")
 	//guildLabel := obj.(*gtk.Label)
 
+	obj, _ = b.GetObject("user_label")
+	userLabel := obj.(*gtk.Label)
+
+	obj, _ = b.GetObject("reg_success_label")
+	regSuccessLabel := obj.(*gtk.Label)
+
+	obj, _ = b.GetObject("reg_err_label")
+	regErrLabel := obj.(*gtk.Label)
+
 	obj, _ = b.GetObject("msg_scroll")
 	scrolledWindow := obj.(*gtk.ScrolledWindow)
 
@@ -129,6 +137,13 @@ func main() {
 			myPass, _ = passEntry.GetText()
 			info, _ := conn.Call("fn.login", []interface{}{myUser, myPass})
 			fmt.Println(info)
+			userTuples := info.Tuples()
+			if userTuples[0][0].(bool) == true {
+				userLabel.SetText(myUser)
+			} else {
+				fmt.Println("Неверный логин или пароль")
+			}
+
 			//tuples := info.Tuples()
 			//userId = tuples[0][0].(string)
 			//guildId = tuples[1][0].(string)
@@ -183,18 +198,31 @@ func main() {
 	})
 
 	regBtn.Connect("clicked", func() {
-		fmt.Println("test")
 		win2.ShowAll()
 
 	})
 	newUserRegBtn.Connect("clicked", func() {
 		newLogin, _ := loginRegEntry.GetText()
 		newPass, _ := passRegEntry.GetText()
-		_, _ = conn.Call("fn.new_user", []interface{}{newLogin, newPass})
-		fmt.Println("Успешная регистрация!")
+		info, _ := conn.Call("fn.new_user", []interface{}{newLogin, newPass})
+		successTuples := info.Tuples()
+		success := successTuples[0][0].(bool)
+		if success == true {
+			fmt.Println("Успешная регистрация!")
+			regErrLabel.Hide()
+			regSuccessLabel.Show()
+		} else {
+			regSuccessLabel.Hide()
+			regErrLabel.Show()
+		}
+
 	})
 
 	closeRegBtn.Connect("clicked", func() {
+		regSuccessLabel.Hide()
+		regErrLabel.Hide()
+		loginRegEntry.SetText("")
+		passRegEntry.SetText("")
 		win2.Hide()
 
 	})
