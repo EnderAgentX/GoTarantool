@@ -133,13 +133,37 @@ func main() {
 
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
-			myUser, _ = loginEntry.GetText()
-			myPass, _ = passEntry.GetText()
-			info, _ := conn.Call("fn.login", []interface{}{myUser, myPass})
+			newUser, _ := loginEntry.GetText()
+			newPass, _ := passEntry.GetText()
+
+			children := groupsListbox.GetChildren()
+
+			for children.Length() > 0 {
+				child := children.NthData(0)
+				if widget, ok := child.(*gtk.Widget); ok {
+					groupsListbox.Remove(widget)
+				}
+				children = groupsListbox.GetChildren()
+			}
+			win.ShowAll()
+
+			info, _ := conn.Call("fn.login", []interface{}{newUser, newPass})
 			fmt.Println(info)
 			userTuples := info.Tuples()
 			if userTuples[0][0].(bool) == true {
+				myUser = newUser
+				myPass = newPass
 				userLabel.SetText(myUser)
+				infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{myUser})
+				userGroupsTuples := infoUserGroups.Tuples()
+				for i := 0; i < len(userGroupsTuples[0]); i++ {
+					rowGroup, _ := gtk.ListBoxRowNew()
+					labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
+					rowGroup.Add(labelGroup)
+					groupsListbox.Insert(rowGroup, 0)
+				}
+				win.ShowAll()
+
 			} else {
 				fmt.Println("Неверный логин или пароль")
 			}
@@ -180,12 +204,15 @@ func main() {
 
 	addGroupBtn.Connect("clicked", func() {
 		groupName, _ := addGroupEntry.GetText()
-		fmt.Println(groupName)
-		rowGroup, _ := gtk.ListBoxRowNew()
-		labelGroup, _ := gtk.LabelNew(groupName)
-		rowGroup.Add(labelGroup)
-		groupsListbox.Insert(rowGroup, 0)
-		win.ShowAll()
+		if myUser != "" {
+			fmt.Println(groupName)
+			_, _ = conn.Call("fn.new_group", []interface{}{myUser, groupName})
+			rowGroup, _ := gtk.ListBoxRowNew()
+			labelGroup, _ := gtk.LabelNew(groupName)
+			rowGroup.Add(labelGroup)
+			groupsListbox.Insert(rowGroup, 0)
+			win.ShowAll()
+		}
 
 	})
 
