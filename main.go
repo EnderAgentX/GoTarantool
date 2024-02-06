@@ -8,10 +8,10 @@ import (
 	"log"
 )
 
-var myUser string
+var MyUser string
 var myPass string
-var guildName string
-var guildId string
+var GroupName string
+var GroupId string
 var userId string
 
 type TimedMsg struct {
@@ -21,7 +21,7 @@ type TimedMsg struct {
 
 type MessageStruct struct {
 	message string
-	userId  string
+	user    string
 	msgTime uint64
 }
 
@@ -91,8 +91,8 @@ func main() {
 	msgBox := obj.(*gtk.Label)
 	msgBox.SetText("")
 
-	//obj, _ = b.GetObject("guild_label")
-	//guildLabel := obj.(*gtk.Label)
+	obj, _ = b.GetObject("guild_label")
+	guildLabel := obj.(*gtk.Label)
 
 	obj, _ = b.GetObject("user_label")
 	userLabel := obj.(*gtk.Label)
@@ -127,6 +127,36 @@ func main() {
 	obj, _ = b.GetObject("add_group_btn")
 	addGroupBtn := obj.(*gtk.Button)
 
+	groupsListbox.Connect("row-activated", func() {
+		AutoScroll(scrolledWindow)
+		selectedRow := groupsListbox.GetSelectedRow()
+		labelRow, _ := selectedRow.GetChild()
+		groupLabel := labelRow.(*gtk.Label)
+		textLabel, _ := groupLabel.GetText()
+		fmt.Println(textLabel)
+		GroupName = textLabel
+		guildLabel.SetText(GroupName)
+		GetMsgTest(conn, msgBox)
+		AutoScroll(scrolledWindow)
+		msgBox.SetText("")
+		messagesArr = messagesArr[:0]
+		GetMsgTest(conn, msgBox)
+		AutoScroll(scrolledWindow)
+		win.ShowAll()
+
+		//t := time.NewTimer(1 * time.Second)
+		//go func() {
+		//	for {
+		//
+		//		t.Reset(1 * time.Second)
+		//		GetMsgTest(conn, msgBox)
+		//		<-t.C
+		//	}
+		//
+		//}()
+
+	})
+
 	// Сигнал по нажатию на кнопку
 
 	loginBtn.Connect("clicked", func() {
@@ -151,10 +181,10 @@ func main() {
 			fmt.Println(info)
 			userTuples := info.Tuples()
 			if userTuples[0][0].(bool) == true {
-				myUser = newUser
+				MyUser = newUser
 				myPass = newPass
-				userLabel.SetText(myUser)
-				infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{myUser})
+				userLabel.SetText(MyUser)
+				infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{MyUser})
 				userGroupsTuples := infoUserGroups.Tuples()
 				for i := 0; i < len(userGroupsTuples[0]); i++ {
 					rowGroup, _ := gtk.ListBoxRowNew()
@@ -170,11 +200,11 @@ func main() {
 
 			//tuples := info.Tuples()
 			//userId = tuples[0][0].(string)
-			//guildId = tuples[1][0].(string)
-			//info, _ = conn.Call("fn.user_guild", []interface{}{myUser})
+			//GroupId = tuples[1][0].(string)
+			//info, _ = conn.Call("fn.user_guild", []interface{}{MyUser})
 			//tuples = info.Tuples()
-			//guildName = tuples[0][0].(string)
-			//guildLabel.SetText(guildName)
+			//GroupName = tuples[0][0].(string)
+			//guildLabel.SetText(GroupName)
 			//msgBox.SetText("")
 			//messagesArr = messagesArr[:0]
 			//GetMsgTest(conn, msgBox)
@@ -204,9 +234,9 @@ func main() {
 
 	addGroupBtn.Connect("clicked", func() {
 		groupName, _ := addGroupEntry.GetText()
-		if myUser != "" {
+		if MyUser != "" {
 			fmt.Println(groupName)
-			_, _ = conn.Call("fn.new_group", []interface{}{myUser, groupName})
+			_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupName})
 			rowGroup, _ := gtk.ListBoxRowNew()
 			labelGroup, _ := gtk.LabelNew(groupName)
 			rowGroup.Add(labelGroup)
@@ -218,7 +248,7 @@ func main() {
 
 	msgBtn.Connect("clicked", func() {
 		newMsg, _ := msgEntry.GetText()
-		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, guildId, userId})
+		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
 		GetMsgTest(conn, msgBox)
 		AutoScroll(scrolledWindow)
 
@@ -264,14 +294,14 @@ func main() {
 }
 
 func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
-	scrolledWindow.Connect("size-allocate", func() {
-		adjustment := scrolledWindow.GetVAdjustment()
-		adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-	})
+	adjustment := scrolledWindow.GetVAdjustment()
+	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+	adjustment.SetUpper(adjustment.GetPageSize() * 100)
+	fmt.Println(adjustment.GetUpper(), adjustment.GetPageSize(), adjustment.GetLower())
 }
 
 func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
-	info, _ := conn.Call("fn.guild_msg", []interface{}{guildId})
+	info, _ := conn.Call("fn.guild_msg", []interface{}{GroupId})
 	messagesArr = messagesArr[:0]
 	messages := info.Tuples()
 	if len(messages[0]) != 0 {
@@ -283,7 +313,7 @@ func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
 			msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUserId})
 			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
-			newMsg := msgUserName + "(" + guildName + "): " + msgText
+			newMsg := msgUserName + "(" + GroupName + "): " + msgText
 
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
@@ -315,9 +345,15 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
-	infoTimedMsg, _ := conn.Call("fn.time_guild_msg", []interface{}{guildId, lastTimedMsg})
+	fmt.Println(lastTimedMsg)
+	fmt.Println(GroupName)
+	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{GroupName, lastTimedMsg})
+	fmt.Println("Функция")
 	newMessagesCntTuples := infoTimedMsg.Tuples()
+	fmt.Println(".")
+	fmt.Println(newMessagesCntTuples)
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+	fmt.Println(".")
 	fmt.Println(lastTimedMsg)
 
 	var newMessages []MessageStruct
@@ -332,13 +368,14 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 		allMsg := ""
 		for i := 0; i < cntMsg; i++ {
 			msgText := newMessages[i].message
-			msgUserId := newMessages[i].userId
+			msgUser := newMessages[i].user
 			msgTime := newMessages[i].msgTime
+			fmt.Println("1test")
 
-			msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUserId}) //ОШИБКА
-			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+			//msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUser}) //ОШИБКА
+			//msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
 
-			newMsg := msgUserName + "(" + guildName + "): " + msgText
+			newMsg := msgUser + "(" + GroupName + "): " + msgText
 
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
