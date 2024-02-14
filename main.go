@@ -3,9 +3,10 @@ package main
 import (
 	"GoTarantool/Server"
 	"fmt"
+	"log"
+
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/tarantool/go-tarantool"
-	"log"
 )
 
 var MyUser string
@@ -13,6 +14,7 @@ var myPass string
 var GroupName string
 var GroupId string
 var userId string
+var selectedRow *gtk.ListBoxRow
 
 type TimedMsg struct {
 	msg  string
@@ -48,40 +50,44 @@ func main() {
 
 	// Получаем объект главного окна по ID
 	obj, err := b.GetObject("main_window")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
 	obj2, err := b.GetObject("regWin")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
+	obj3, _ := b.GetObject("CenterWin")
 
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
 	win := obj.(*gtk.Window)
+	win3 := obj3.(*gtk.ApplicationWindow)
+	//win.Move(0, 0)
+
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
 
-	win2 := obj2.(*gtk.Window)
+	win2 := obj2.(*gtk.Dialog)
 	win2.Connect("delete-event", func() {
+		fmt.Println("Окно закрывается, но не будет удалено")
+
+		//win2.HideOnDelete()
 		win2.Hide()
+		win3.Hide()
+		win.ShowAll()
+		//win2.Hide()
+		//win2 := obj2.(*gtk.Dialog)
+		//win2.ShowAll()
+
 	})
-
-	// Получаем поле ввода
-	obj, _ = b.GetObject("login_entry")
-	loginEntry := obj.(*gtk.Entry)
-
-	obj, _ = b.GetObject("password_entry")
-	passEntry := obj.(*gtk.Entry)
 
 	obj, _ = b.GetObject("msg_entry")
 	msgEntry := obj.(*gtk.Entry)
 
 	// Получаем кнопку
-	obj, _ = b.GetObject("login_btn")
-	loginBtn := obj.(*gtk.Button)
-
-	obj, _ = b.GetObject("reg_btn")
-	regBtn := obj.(*gtk.Button)
 
 	obj, _ = b.GetObject("msg_btn")
 	msgBtn := obj.(*gtk.Button)
@@ -106,8 +112,8 @@ func main() {
 	obj, _ = b.GetObject("msg_scroll")
 	scrolledWindow := obj.(*gtk.ScrolledWindow)
 
-	obj2, _ = b.GetObject("close_reg_btn")
-	closeRegBtn := obj2.(*gtk.Button)
+	obj2, _ = b.GetObject("login_reg_btn")
+	loginRegBtn := obj2.(*gtk.Button)
 
 	obj, _ = b.GetObject("newuser_reg_btn")
 	newUserRegBtn := obj.(*gtk.Button)
@@ -129,42 +135,51 @@ func main() {
 
 	groupsListbox.Connect("row-activated", func() {
 		AutoScroll(scrolledWindow)
-		selectedRow := groupsListbox.GetSelectedRow()
-		labelRow, _ := selectedRow.GetChild()
-		groupLabel := labelRow.(*gtk.Label)
-		textLabel, _ := groupLabel.GetText()
-		fmt.Println(textLabel)
-		GroupName = textLabel
-		guildLabel.SetText(GroupName)
-		GetMsgTest(conn, msgBox)
-		AutoScroll(scrolledWindow)
-		msgBox.SetText("")
-		messagesArr = messagesArr[:0]
-		GetMsgTest(conn, msgBox)
-		AutoScroll(scrolledWindow)
-		win.ShowAll()
+		tempRow := groupsListbox.GetSelectedRow()
+		fmt.Println(tempRow.GetIndex())
+		fmt.Println(selectedRow.GetIndex())
+		if tempRow.GetIndex() == selectedRow.GetIndex() {
+			groupsListbox.UnselectAll()
+			selectedRow = groupsListbox.GetSelectedRow()
+			msgBox.SetText("")
+		} else {
+			selectedRow = groupsListbox.GetSelectedRow()
+			labelRow, _ := selectedRow.GetChild()
+			groupLabel := labelRow.(*gtk.Label)
+			textLabel, _ := groupLabel.GetText()
+			fmt.Println(textLabel)
+			GroupName = textLabel
+			guildLabel.SetText(GroupName)
+			GetMsgTest(conn, msgBox)
+			AutoScroll(scrolledWindow)
+			msgBox.SetText("")
+			messagesArr = messagesArr[:0]
+			GetMsgTest(conn, msgBox)
+			AutoScroll(scrolledWindow)
+			win.ShowAll()
 
-		//t := time.NewTimer(1 * time.Second)
-		//go func() {
-		//	for {
-		//
-		//		t.Reset(1 * time.Second)
-		//		GetMsgTest(conn, msgBox)
-		//		<-t.C
-		//	}
-		//
-		//}()
+			//t := time.NewTimer(1 * time.Second)
+			//go func() {
+			//	for {
+			//
+			//		t.Reset(1 * time.Second)
+			//		GetMsgTest(conn, msgBox)
+			//		<-t.C
+			//	}
+			//
+			//}()
+		}
 
 	})
 
 	// Сигнал по нажатию на кнопку
 
-	loginBtn.Connect("clicked", func() {
+	loginRegBtn.Connect("clicked", func() {
 
 		if err == nil {
 			// Устанавливаем текст из поля ввода метке
-			newUser, _ := loginEntry.GetText()
-			newPass, _ := passEntry.GetText()
+			newUser, _ := loginRegEntry.GetText()
+			newPass, _ := passRegEntry.GetText()
 
 			children := groupsListbox.GetChildren()
 
@@ -192,6 +207,11 @@ func main() {
 					rowGroup.Add(labelGroup)
 					groupsListbox.Insert(rowGroup, 0)
 				}
+				regSuccessLabel.Hide()
+				regErrLabel.Hide()
+				loginRegEntry.SetText("")
+				passRegEntry.SetText("")
+				win2.Hide()
 				win.ShowAll()
 
 			} else {
@@ -254,10 +274,6 @@ func main() {
 
 	})
 
-	regBtn.Connect("clicked", func() {
-		win2.ShowAll()
-
-	})
 	newUserRegBtn.Connect("clicked", func() {
 		newLogin, _ := loginRegEntry.GetText()
 		newPass, _ := passRegEntry.GetText()
@@ -275,17 +291,17 @@ func main() {
 
 	})
 
-	closeRegBtn.Connect("clicked", func() {
-		regSuccessLabel.Hide()
-		regErrLabel.Hide()
-		loginRegEntry.SetText("")
-		passRegEntry.SetText("")
-		win2.Hide()
+	// closeRegBtn.Connect("clicked", func() {
+	// 	regSuccessLabel.Hide()
+	// 	regErrLabel.Hide()
+	// 	loginRegEntry.SetText("")
+	// 	passRegEntry.SetText("")
+	// 	win2.Hide()
 
-	})
+	//})
 
 	// Отображаем все виджеты в окне
-	win.ShowAll()
+	win2.Run()
 
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
 	// выполнится gtk.MainQuit()
@@ -297,7 +313,6 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 	adjustment := scrolledWindow.GetVAdjustment()
 	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
 	adjustment.SetUpper(adjustment.GetPageSize() * 100)
-	fmt.Println(adjustment.GetUpper(), adjustment.GetPageSize(), adjustment.GetLower())
 }
 
 func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
@@ -345,24 +360,16 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
-	fmt.Println(lastTimedMsg)
-	fmt.Println(GroupName)
+
 	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{GroupName, lastTimedMsg})
-	fmt.Println("Функция")
 	newMessagesCntTuples := infoTimedMsg.Tuples()
-	fmt.Println(".")
-	fmt.Println(newMessagesCntTuples)
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
-	fmt.Println(".")
-	fmt.Println(lastTimedMsg)
 
 	var newMessages []MessageStruct
 	for i := 0; i < cntMsg; i++ {
 		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
 		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64)})
 	}
-	fmt.Println(newMessages)
-	fmt.Println("Кол-во", cntMsg)
 
 	if cntMsg != 0 {
 		allMsg := ""
@@ -370,7 +377,6 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 			msgText := newMessages[i].message
 			msgUser := newMessages[i].user
 			msgTime := newMessages[i].msgTime
-			fmt.Println("1test")
 
 			//msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUser}) //ОШИБКА
 			//msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
@@ -383,7 +389,6 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 		}
 		tText, _ := msgBox.GetText()
 		msgBox.SetText(tText + allMsg)
-		fmt.Println("Массив", messagesArr)
 
 	}
 }
