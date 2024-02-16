@@ -93,9 +93,6 @@ func main() {
 	msgBtn := obj.(*gtk.Button)
 
 	// Получаем метку
-	obj, _ = b.GetObject("msg_box")
-	msgBox := obj.(*gtk.Label)
-	msgBox.SetText("")
 
 	obj, _ = b.GetObject("guild_label")
 	guildLabel := obj.(*gtk.Label)
@@ -155,17 +152,15 @@ func main() {
 			guildLabel.SetText(GroupName)
 			messagesArr = messagesArr[:0]
 			GetMsgTest(conn, msgListbox)
-
 			AutoScroll(scrolledWindow)
 			win.ShowAll()
-
 			//Таймер потом включить
 			//t := time.NewTimer(1 * time.Second)
 			//go func() {
 			//	for {
 			//
 			//		t.Reset(1 * time.Second)
-			//		GetMsgTest(conn, msgBox, msgListbox)
+			//		GetMsgTest(conn, msgListbox)
 			//		<-t.C
 			//	}
 			//
@@ -235,6 +230,7 @@ func main() {
 		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
 		GetMsgTest(conn, msgListbox)
 		AutoScroll(scrolledWindow)
+		//AutoScroll(scrolledWindow)
 
 	})
 
@@ -277,26 +273,28 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 	adjustment := scrolledWindow.GetVAdjustment()
 	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
 	adjustment.SetUpper(adjustment.GetPageSize() * 100)
+	adjustment = scrolledWindow.GetVAdjustment()
+	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+	adjustment.SetUpper(adjustment.GetPageSize() * 10)
 }
 
 func clearListbox(ListBox *gtk.ListBox) {
 	children := ListBox.GetChildren()
 
-			for children.Length() > 0 {
-				child := children.NthData(0)
-				if widget, ok := child.(*gtk.Widget); ok {
-					ListBox.Remove(widget)
-				}
-				children = ListBox.GetChildren()
-			}
-			ListBox.ShowAll()
+	for children.Length() > 0 {
+		child := children.NthData(0)
+		if widget, ok := child.(*gtk.Widget); ok {
+			ListBox.Remove(widget)
+		}
+		children = ListBox.GetChildren()
+	}
+	ListBox.ShowAll()
 }
-
 
 func GetMsgTest(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	var lastTimedMsg uint64
 
-	fmt.Println("len(messagesArr) ",len(messagesArr))
+	fmt.Println("len(messagesArr) ", len(messagesArr))
 	if len(messagesArr) == 0 {
 		clearListbox(msgListBox)
 		lastTimedMsg = 0 // В самом начале загружаем все сообщения
@@ -335,7 +333,7 @@ func GetMsgTest(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 			msgListBox.Insert(rowMsg, -1)
 
 		}
-		
+
 		msgListBox.ShowAll()
 
 	}
