@@ -74,13 +74,9 @@ func main() {
 	win2.Connect("delete-event", func() {
 		fmt.Println("Окно закрывается, но не будет удалено")
 
-		//win2.HideOnDelete()
 		win2.Hide()
 		win3.Hide()
 		win.ShowAll()
-		//win2.Hide()
-		//win2 := obj2.(*gtk.Dialog)
-		//win2.ShowAll()
 
 	})
 
@@ -100,11 +96,8 @@ func main() {
 	obj, _ = b.GetObject("user_label")
 	userLabel := obj.(*gtk.Label)
 
-	obj, _ = b.GetObject("reg_success_label")
-	regSuccessLabel := obj.(*gtk.Label)
-
-	obj, _ = b.GetObject("reg_err_label")
-	regErrLabel := obj.(*gtk.Label)
+	obj, _ = b.GetObject("registration_success_label")
+	registrationSuccessLabel := obj.(*gtk.Label)
 
 	obj, _ = b.GetObject("msg_scroll")
 	scrolledWindow := obj.(*gtk.ScrolledWindow)
@@ -192,12 +185,13 @@ func main() {
 				for i := 0; i < len(userGroupsTuples[0]); i++ {
 					rowGroup, _ := gtk.ListBoxRowNew()
 					labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
-					labelGroup.SetJustify(gtk.JUSTIFY_LEFT)
+					labelGroup.SetSizeRequest(-1, 50)
+					tempText, _ := labelGroup.GetText()
+					markup := fmt.Sprintf("<span font_desc='Sans Bold 20'>%s</span>", tempText)
+					labelGroup.SetMarkup(markup)
 					rowGroup.Add(labelGroup)
 					groupsListbox.Insert(rowGroup, 0)
 				}
-				regSuccessLabel.Hide()
-				regErrLabel.Hide()
 				loginRegEntry.SetText("")
 				passRegEntry.SetText("")
 				win2.Hide()
@@ -240,23 +234,21 @@ func main() {
 		info, _ := conn.Call("fn.new_user", []interface{}{newLogin, newPass})
 		successTuples := info.Tuples()
 		success := successTuples[0][0].(bool)
+		successText := ""
+		markup := ""
 		if success == true {
 			fmt.Println("Успешная регистрация!")
-			regErrLabel.Hide()
-			regSuccessLabel.Show()
+			successText = "Успешная регистрация! \n"
+			markup = fmt.Sprintf("<span size='15000' foreground='green'>%s</span>", successText)
+
 		} else {
-			regSuccessLabel.Hide()
-			regErrLabel.Show()
-		}
+			successText = "Ошибка! \n Пользователь уже существует"
+			markup = fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", successText)
+		} // TODO неверный пароль
+		registrationSuccessLabel.SetText(successText)
+		registrationSuccessLabel.SetMarkup(markup)
 
 	})
-
-	// closeRegBtn.Connect("clicked", func() {
-	// 	regSuccessLabel.Hide()
-	// 	regErrLabel.Hide()
-	// 	loginRegEntry.SetText("")
-	// 	passRegEntry.SetText("")
-	// 	win2.Hide()
 
 	//})
 
