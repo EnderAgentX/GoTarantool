@@ -1,0 +1,7 @@
+*.log
+*.xlog
+*.snap
+**/snap
+**/wal
+*.pid
+Chat_gui.glade~

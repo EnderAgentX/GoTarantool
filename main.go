@@ -133,6 +133,9 @@ func main() {
 	obj, _ = b.GetObject("add_group_btn")
 	addGroupBtn := obj.(*gtk.Button)
 
+	obj, _ = b.GetObject("listbox_msg")
+	msgListbox := obj.(*gtk.ListBox)
+
 	groupsListbox.Connect("row-activated", func() {
 		AutoScroll(scrolledWindow)
 		tempRow := groupsListbox.GetSelectedRow()
@@ -140,8 +143,8 @@ func main() {
 		fmt.Println(selectedRow.GetIndex())
 		if tempRow.GetIndex() == selectedRow.GetIndex() {
 			groupsListbox.UnselectAll()
+			clearListbox(msgListbox)
 			selectedRow = groupsListbox.GetSelectedRow()
-			msgBox.SetText("")
 		} else {
 			selectedRow = groupsListbox.GetSelectedRow()
 			labelRow, _ := selectedRow.GetChild()
@@ -150,20 +153,19 @@ func main() {
 			fmt.Println(textLabel)
 			GroupName = textLabel
 			guildLabel.SetText(GroupName)
-			GetMsgTest(conn, msgBox)
-			AutoScroll(scrolledWindow)
-			msgBox.SetText("")
 			messagesArr = messagesArr[:0]
-			GetMsgTest(conn, msgBox)
+			GetMsgTest(conn, msgListbox)
+
 			AutoScroll(scrolledWindow)
 			win.ShowAll()
 
+			//Таймер потом включить
 			//t := time.NewTimer(1 * time.Second)
 			//go func() {
 			//	for {
 			//
 			//		t.Reset(1 * time.Second)
-			//		GetMsgTest(conn, msgBox)
+			//		GetMsgTest(conn, msgBox, msgListbox)
 			//		<-t.C
 			//	}
 			//
@@ -181,16 +183,7 @@ func main() {
 			newUser, _ := loginRegEntry.GetText()
 			newPass, _ := passRegEntry.GetText()
 
-			children := groupsListbox.GetChildren()
-
-			for children.Length() > 0 {
-				child := children.NthData(0)
-				if widget, ok := child.(*gtk.Widget); ok {
-					groupsListbox.Remove(widget)
-				}
-				children = groupsListbox.GetChildren()
-			}
-			win.ShowAll()
+			clearListbox(groupsListbox)
 
 			info, _ := conn.Call("fn.login", []interface{}{newUser, newPass})
 			fmt.Println(info)
@@ -204,6 +197,7 @@ func main() {
 				for i := 0; i < len(userGroupsTuples[0]); i++ {
 					rowGroup, _ := gtk.ListBoxRowNew()
 					labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
+					labelGroup.SetJustify(gtk.JUSTIFY_LEFT)
 					rowGroup.Add(labelGroup)
 					groupsListbox.Insert(rowGroup, 0)
 				}
@@ -218,36 +212,6 @@ func main() {
 				fmt.Println("Неверный логин или пароль")
 			}
 
-			//tuples := info.Tuples()
-			//userId = tuples[0][0].(string)
-			//GroupId = tuples[1][0].(string)
-			//info, _ = conn.Call("fn.user_guild", []interface{}{MyUser})
-			//tuples = info.Tuples()
-			//GroupName = tuples[0][0].(string)
-			//guildLabel.SetText(GroupName)
-			//msgBox.SetText("")
-			//messagesArr = messagesArr[:0]
-			//GetMsgTest(conn, msgBox)
-			////GetMsg(conn, msgBox)
-			//AutoScroll(scrolledWindow)
-			//
-			//t := time.NewTimer(1 * time.Second)
-			//if isLogin == false {
-			//	isLogin = true
-			//	go func() {
-			//		for {
-			//
-			//			t.Reset(1 * time.Second)
-			//			//GetMsg(conn, msgBox)
-			//			GetMsgTest(conn, msgBox)
-			//			AutoScroll(scrolledWindow)
-			//			<-t.C
-			//		}
-			//
-			//	}()
-			//
-			//	// Увеличиваем счетчик wait group на 1
-			//}
 		}
 
 	})
@@ -269,7 +233,7 @@ func main() {
 	msgBtn.Connect("clicked", func() {
 		newMsg, _ := msgEntry.GetText()
 		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
-		GetMsgTest(conn, msgBox)
+		GetMsgTest(conn, msgListbox)
 		AutoScroll(scrolledWindow)
 
 	})
@@ -315,47 +279,26 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 	adjustment.SetUpper(adjustment.GetPageSize() * 100)
 }
 
-func GetMsg(conn *tarantool.Connection, msgBox *gtk.Label) {
-	info, _ := conn.Call("fn.guild_msg", []interface{}{GroupId})
-	messagesArr = messagesArr[:0]
-	messages := info.Tuples()
-	if len(messages[0]) != 0 {
-		allMsg := ""
-		for i := range messages {
-			msgText := messages[i][0].(string)
-			msgUserId := messages[i][1]
-			msgTime := messages[i][2].(uint64)
-			msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUserId})
-			msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
+func clearListbox(ListBox *gtk.ListBox) {
+	children := ListBox.GetChildren()
 
-			newMsg := msgUserName + "(" + GroupName + "): " + msgText
-
-			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
-
-			allMsg = allMsg + newMsg + "\n"
-		}
-		msgBox.SetText(allMsg)
-		fmt.Println(messagesArr)
-
-		lastTimedMsg := messagesArr[len(messagesArr)-1].time
-		fmt.Println(lastTimedMsg)
-		infoTimedMsg, _ := conn.Call("fn.time_guild_msg", []interface{}{lastTimedMsg})
-		newMessages := infoTimedMsg.Tuples()
-		if len(newMessages[0]) != 0 {
-			for i := range newMessages {
-				fmt.Println(newMessages[i][1].(string))
+			for children.Length() > 0 {
+				child := children.NthData(0)
+				if widget, ok := child.(*gtk.Widget); ok {
+					ListBox.Remove(widget)
+				}
+				children = ListBox.GetChildren()
 			}
-		}
-
-	} else {
-		msgBox.SetText("")
-		messagesArr = messagesArr[:0]
-	}
+			ListBox.ShowAll()
 }
 
-func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
+
+func GetMsgTest(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	var lastTimedMsg uint64
+
+	fmt.Println("len(messagesArr) ",len(messagesArr))
 	if len(messagesArr) == 0 {
+		clearListbox(msgListBox)
 		lastTimedMsg = 0 // В самом начале загружаем все сообщения
 	} else {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
@@ -364,6 +307,7 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{GroupName, lastTimedMsg})
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+	fmt.Println("lastTimedMsg", lastTimedMsg)
 
 	var newMessages []MessageStruct
 	for i := 0; i < cntMsg; i++ {
@@ -372,23 +316,27 @@ func GetMsgTest(conn *tarantool.Connection, msgBox *gtk.Label) {
 	}
 
 	if cntMsg != 0 {
-		allMsg := ""
 		for i := 0; i < cntMsg; i++ {
 			msgText := newMessages[i].message
 			msgUser := newMessages[i].user
 			msgTime := newMessages[i].msgTime
 
-			//msgUserNameTuples, _ := conn.Call("fn.get_name", []interface{}{msgUser}) //ОШИБКА
-			//msgUserName := msgUserNameTuples.Tuples()[0][0].(string)
-
 			newMsg := msgUser + "(" + GroupName + "): " + msgText
 
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
-			allMsg = allMsg + newMsg + "\n"
+			//listbox
+
+			rowMsg, _ := gtk.ListBoxRowNew()
+			labelMsg, _ := gtk.LabelNew(newMsg)
+			labelMsg.SetHAlign(gtk.ALIGN_START)
+			labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
+			rowMsg.Add(labelMsg)
+			msgListBox.Insert(rowMsg, -1)
+
 		}
-		tText, _ := msgBox.GetText()
-		msgBox.SetText(tText + allMsg)
+		
+		msgListBox.ShowAll()
 
 	}
 }
