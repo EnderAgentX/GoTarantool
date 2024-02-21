@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/tarantool/go-tarantool"
 )
@@ -57,26 +58,20 @@ func main() {
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
-	obj3, _ := b.GetObject("CenterWin")
 
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
 	win := obj.(*gtk.Window)
-	win3 := obj3.(*gtk.ApplicationWindow)
 	//win.Move(0, 0)
 
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
 
-	win2 := obj2.(*gtk.Dialog)
+	win2 := obj2.(*gtk.Window)
 	win2.Connect("delete-event", func() {
-		fmt.Println("Окно закрывается, но не будет удалено")
-
-		win2.Hide()
-		win3.Hide()
-		win.ShowAll()
+		gtk.MainQuit()
 
 	})
 
@@ -123,14 +118,36 @@ func main() {
 	obj, _ = b.GetObject("add_group_btn")
 	addGroupBtn := obj.(*gtk.Button)
 
+	obj, _ = b.GetObject("exit_btn")
+	exitBtn := obj.(*gtk.Button)
+
 	obj, _ = b.GetObject("listbox_msg")
 	msgListbox := obj.(*gtk.ListBox)
 
+	groupsListbox.Connect("button-press-event", func(box *gtk.ListBox, event *gdk.Event) {
+		buttonEvent := gdk.EventButtonNewFromEvent(event)
+		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS {
+			fmt.Println("DOUBLE")
+			groupsListbox.UnselectAll()
+			groupsListbox.ShowAll()
+			win.ShowAll()
+			return // Ignore double-click events
+		}
+
+		// Handle single-click events
+		row := box.GetSelectedRow()
+		if row != nil {
+			index := row.GetIndex()
+			fmt.Printf("Clicked on row %d\n", index)
+		}
+	})
+
 	groupsListbox.Connect("row-activated", func() {
+		fmt.Println("Выбрана группа")
 		AutoScroll(scrolledWindow)
 		tempRow := groupsListbox.GetSelectedRow()
-		fmt.Println(tempRow.GetIndex())
-		fmt.Println(selectedRow.GetIndex())
+		fmt.Println("tempRow.GetIndex()", tempRow.GetIndex())
+		fmt.Println("selectedRow.GetIndex())", selectedRow.GetIndex())
 		if tempRow.GetIndex() == selectedRow.GetIndex() {
 			groupsListbox.UnselectAll()
 			clearListbox(msgListbox)
@@ -147,6 +164,7 @@ func main() {
 			GetMsgTest(conn, msgListbox)
 			AutoScroll(scrolledWindow)
 			win.ShowAll()
+
 			//Таймер потом включить
 			//t := time.NewTimer(1 * time.Second)
 			//go func() {
@@ -163,6 +181,20 @@ func main() {
 	})
 
 	// Сигнал по нажатию на кнопку
+
+	exitBtn.Connect("clicked", func() {
+		groupsListbox.UnselectAll()
+		msgListbox.UnselectAll()
+		clearListbox(groupsListbox)
+		clearListbox(msgListbox)
+		selectedRow, _ = gtk.ListBoxRowNew()
+		userLabel.SetText("")
+		guildLabel.SetText("")
+		messagesArr = messagesArr[:0]
+		fmt.Println("Выход")
+		win.Hide()
+		win2.ShowAll()
+	})
 
 	loginRegBtn.Connect("clicked", func() {
 
@@ -187,18 +219,22 @@ func main() {
 					labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
 					labelGroup.SetSizeRequest(-1, 50)
 					tempText, _ := labelGroup.GetText()
-					markup := fmt.Sprintf("<span font_desc='Sans Bold 20'>%s</span>", tempText)
+					markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", tempText)
 					labelGroup.SetMarkup(markup)
 					rowGroup.Add(labelGroup)
 					groupsListbox.Insert(rowGroup, 0)
 				}
 				loginRegEntry.SetText("")
 				passRegEntry.SetText("")
+				registrationSuccessLabel.SetText("\n")
 				win2.Hide()
 				win.ShowAll()
 
 			} else {
-				fmt.Println("Неверный логин или пароль")
+				errText := "Ошибка! \n Неверный логин или пароль!"
+				markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", errText)
+				registrationSuccessLabel.SetText(errText)
+				registrationSuccessLabel.SetMarkup(markup)
 			}
 
 		}
@@ -207,11 +243,13 @@ func main() {
 
 	addGroupBtn.Connect("clicked", func() {
 		groupName, _ := addGroupEntry.GetText()
-		if MyUser != "" {
+		if MyUser != "" && groupName != "" && groupName != " " {
 			fmt.Println(groupName)
 			_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupName})
 			rowGroup, _ := gtk.ListBoxRowNew()
 			labelGroup, _ := gtk.LabelNew(groupName)
+			markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", groupName)
+			labelGroup.SetMarkup(markup)
 			rowGroup.Add(labelGroup)
 			groupsListbox.Insert(rowGroup, 0)
 			win.ShowAll()
@@ -219,7 +257,21 @@ func main() {
 
 	})
 
-	msgBtn.Connect("clicked", func() {
+	msgBtn.Connect("button-press-event", func(btn *gtk.Button, event *gdk.Event) {
+		buttonEvent := gdk.EventButtonNewFromEvent(event)
+		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS || buttonEvent.Type() == gdk.EVENT_3BUTTON_PRESS {
+			newMsg, _ := msgEntry.GetText()
+			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
+			GetMsgTest(conn, msgListbox)
+			AutoScroll(scrolledWindow)
+			clearListbox(msgListbox)
+			GetMsgTest(conn, msgListbox)
+			msgListbox.ShowAll()
+			win.ShowAll()
+			fmt.Println("Double click")
+			return // Ignore double-click events
+		}
+
 		newMsg, _ := msgEntry.GetText()
 		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
 		GetMsgTest(conn, msgListbox)
@@ -228,32 +280,46 @@ func main() {
 
 	})
 
+	msgEntry.Connect("key-press-event", func(entry *gtk.Entry, event *gdk.Event) {
+		keyEvent := &gdk.EventKey{Event: event}
+		keyVal := keyEvent.KeyVal()
+		if keyVal == gdk.KEY_Return {
+			text, _ := entry.GetText()
+			log.Println("Enter key pressed in entry. Text entered:", text)
+			newMsg, _ := msgEntry.GetText()
+			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
+			GetMsgTest(conn, msgListbox)
+			AutoScroll(scrolledWindow)
+		}
+	})
+
 	newUserRegBtn.Connect("clicked", func() {
 		newLogin, _ := loginRegEntry.GetText()
 		newPass, _ := passRegEntry.GetText()
-		info, _ := conn.Call("fn.new_user", []interface{}{newLogin, newPass})
-		successTuples := info.Tuples()
-		success := successTuples[0][0].(bool)
-		successText := ""
-		markup := ""
-		if success == true {
-			fmt.Println("Успешная регистрация!")
-			successText = "Успешная регистрация! \n"
-			markup = fmt.Sprintf("<span size='15000' foreground='green'>%s</span>", successText)
+		if newLogin != "" && newPass != "" {
+			info, _ := conn.Call("fn.new_user", []interface{}{newLogin, newPass})
+			successTuples := info.Tuples()
+			success := successTuples[0][0].(bool)
+			successText := ""
+			markup := ""
+			if success == true {
+				fmt.Println("Успешная регистрация!")
+				successText = "Успешная регистрация! \n"
+				markup = fmt.Sprintf("<span size='15000' foreground='green'>%s</span>", successText)
 
-		} else {
-			successText = "Ошибка! \n Пользователь уже существует"
-			markup = fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", successText)
-		} // TODO неверный пароль
-		registrationSuccessLabel.SetText(successText)
-		registrationSuccessLabel.SetMarkup(markup)
-
+			} else {
+				successText = "Ошибка! \n Пользователь уже существует"
+				markup = fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", successText)
+			} // TODO неверный пароль
+			registrationSuccessLabel.SetText(successText)
+			registrationSuccessLabel.SetMarkup(markup)
+		}
 	})
 
 	//})
 
 	// Отображаем все виджеты в окне
-	win2.Run()
+	win2.ShowAll()
 
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
 	// выполнится gtk.MainQuit()
@@ -271,6 +337,8 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 }
 
 func clearListbox(ListBox *gtk.ListBox) {
+	messagesArr = messagesArr[:0]
+
 	children := ListBox.GetChildren()
 
 	for children.Length() > 0 {
