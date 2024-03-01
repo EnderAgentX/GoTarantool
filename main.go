@@ -214,7 +214,15 @@ func main() {
 	})
 
 	changeGroupBtn.Connect("clicked", func() {
-		//
+		newGroup, _ := addGroupEntry.GetText()
+		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, GroupName, newGroup})
+		GetGroups(conn, groupsListbox)
+		selectedRow, _ = gtk.ListBoxRowNew()
+		addGroupEntry.SetText("")
+		GroupName = newGroup
+		clearListbox(msgListbox)
+		messagesArr = messagesArr[:0]
+		msgEntry.SetText("")
 
 	})
 
@@ -234,18 +242,7 @@ func main() {
 				MyUser = newUser
 				myPass = newPass
 				userLabel.SetText(MyUser)
-				infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{MyUser})
-				userGroupsTuples := infoUserGroups.Tuples()
-				for i := 0; i < len(userGroupsTuples[0]); i++ {
-					rowGroup, _ := gtk.ListBoxRowNew()
-					labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
-					labelGroup.SetSizeRequest(-1, 50)
-					tempText, _ := labelGroup.GetText()
-					markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", tempText)
-					labelGroup.SetMarkup(markup)
-					rowGroup.Add(labelGroup)
-					groupsListbox.Insert(rowGroup, 0)
-				}
+				GetGroups(conn, groupsListbox)
 				loginRegEntry.SetText("")
 				passRegEntry.SetText("")
 				registrationSuccessLabel.SetText("\n")
@@ -395,6 +392,23 @@ func clearListbox(ListBox *gtk.ListBox) {
 	ListBox.ShowAll()
 }
 
+func GetGroups(conn *tarantool.Connection, groupsListbox *gtk.ListBox) {
+	clearListbox(groupsListbox)
+	infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{MyUser})
+	userGroupsTuples := infoUserGroups.Tuples()
+	for i := 0; i < len(userGroupsTuples[0]); i++ {
+		rowGroup, _ := gtk.ListBoxRowNew()
+		labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
+		labelGroup.SetSizeRequest(-1, 50)
+		tempText, _ := labelGroup.GetText()
+		markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", tempText)
+		labelGroup.SetMarkup(markup)
+		rowGroup.Add(labelGroup)
+		groupsListbox.Insert(rowGroup, 0)
+	}
+	groupsListbox.ShowAll()
+}
+
 func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	var lastTimedMsg uint64
 
@@ -409,6 +423,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{GroupName, lastTimedMsg})
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+	fmt.Println("TESTTT")
 	fmt.Println("lastTimedMsg", lastTimedMsg)
 
 	var newMessages []MessageStruct
