@@ -118,6 +118,12 @@ func main() {
 	obj, _ = b.GetObject("add_group_btn")
 	addGroupBtn := obj.(*gtk.Button)
 
+	obj, _ = b.GetObject("btn_del_group")
+	delGroupBtn := obj.(*gtk.Button)
+
+	obj, _ = b.GetObject("btn_change_group")
+	changeGroupBtn := obj.(*gtk.Button)
+
 	obj, _ = b.GetObject("exit_btn")
 	exitBtn := obj.(*gtk.Button)
 
@@ -161,7 +167,7 @@ func main() {
 			GroupName = textLabel
 			guildLabel.SetText(GroupName)
 			messagesArr = messagesArr[:0]
-			GetMsgTest(conn, msgListbox)
+			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
 			win.ShowAll()
 
@@ -171,7 +177,7 @@ func main() {
 			//	for {
 			//
 			//		t.Reset(1 * time.Second)
-			//		GetMsgTest(conn, msgListbox)
+			//		GetMsg(conn, msgListbox)
 			//		<-t.C
 			//	}
 			//
@@ -194,6 +200,22 @@ func main() {
 		fmt.Println("Выход")
 		win.Hide()
 		win2.ShowAll()
+	})
+
+	delGroupBtn.Connect("clicked", func() {
+		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, GroupName})
+		groupsListbox.Remove(selectedRow)
+		selectedRow, _ = gtk.ListBoxRowNew()
+		clearListbox(msgListbox)
+		guildLabel.SetText("")
+		messagesArr = messagesArr[:0]
+		msgEntry.SetText("")
+		addGroupEntry.SetText("")
+	})
+
+	changeGroupBtn.Connect("clicked", func() {
+		//
+
 	})
 
 	loginRegBtn.Connect("clicked", func() {
@@ -252,6 +274,7 @@ func main() {
 			labelGroup.SetMarkup(markup)
 			rowGroup.Add(labelGroup)
 			groupsListbox.Insert(rowGroup, 0)
+			addGroupEntry.SetText("")
 			win.ShowAll()
 		}
 
@@ -262,10 +285,10 @@ func main() {
 		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS || buttonEvent.Type() == gdk.EVENT_3BUTTON_PRESS {
 			newMsg, _ := msgEntry.GetText()
 			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
-			GetMsgTest(conn, msgListbox)
+			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
 			clearListbox(msgListbox)
-			GetMsgTest(conn, msgListbox)
+			GetMsg(conn, msgListbox)
 			msgListbox.ShowAll()
 			win.ShowAll()
 			fmt.Println("Double click")
@@ -274,7 +297,7 @@ func main() {
 
 		newMsg, _ := msgEntry.GetText()
 		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
-		GetMsgTest(conn, msgListbox)
+		GetMsg(conn, msgListbox)
 		AutoScroll(scrolledWindow)
 		//AutoScroll(scrolledWindow)
 
@@ -288,8 +311,14 @@ func main() {
 			log.Println("Enter key pressed in entry. Text entered:", text)
 			newMsg, _ := msgEntry.GetText()
 			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
-			GetMsgTest(conn, msgListbox)
+			GetMsg(conn, msgListbox)
+			win.ShowAll()
 			AutoScroll(scrolledWindow)
+			msgEntry.SetText("")
+			scrolledWindow.ShowAll()
+			msgListbox.ShowAll()
+			msgListbox.SelectAll()
+			win.ShowAll()
 		}
 	})
 
@@ -328,13 +357,28 @@ func main() {
 }
 
 func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
+	scrolledWindow.ShowAll()
 	adjustment := scrolledWindow.GetVAdjustment()
-	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-	adjustment.SetUpper(adjustment.GetPageSize() * 100)
-	adjustment = scrolledWindow.GetVAdjustment()
-	adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
-	adjustment.SetUpper(adjustment.GetPageSize() * 10)
+	adjustment.SetValue(adjustment.GetLower())
+	// scrolledWindow.ShowAll()
+	// adjustment := scrolledWindow.GetVAdjustment()
+	// tempUp := adjustment.GetUpper()
+	// adjustment.SetUpper(adjustment.GetUpper() + 22)
+	// adjustment.SetValue(adjustment.GetUpper() - adjustment.GetPageSize())
+	// fmt.Println("Up до", adjustment.GetUpper())
+	// fmt.Println("Page до", adjustment.GetPageSize())
+	// fmt.Println("value до", adjustment.GetUpper() - adjustment.GetPageSize())
+
+	// scrolledWindow.ShowAll()
+	// adjustment.SetUpper(tempUp)
+	// adjustment.SetValue(adjustment.GetValue() - 22)
+	// fmt.Println("Up после", adjustment.GetUpper())
+	// fmt.Println("Page после", adjustment.GetPageSize())
 }
+
+// func delGroup(groupId int, groupsListbox *gtk.ListBox) {
+// 	groupsListbox
+// }
 
 func clearListbox(ListBox *gtk.ListBox) {
 	messagesArr = messagesArr[:0]
@@ -351,7 +395,7 @@ func clearListbox(ListBox *gtk.ListBox) {
 	ListBox.ShowAll()
 }
 
-func GetMsgTest(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
+func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	var lastTimedMsg uint64
 
 	fmt.Println("len(messagesArr) ", len(messagesArr))
@@ -390,7 +434,8 @@ func GetMsgTest(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 			labelMsg.SetHAlign(gtk.ALIGN_START)
 			labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
 			rowMsg.Add(labelMsg)
-			msgListBox.Insert(rowMsg, -1)
+			//msgListBox.Insert(rowMsg, 1)
+			msgListBox.Prepend(rowMsg)
 
 		}
 
