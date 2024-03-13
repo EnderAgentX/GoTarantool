@@ -148,6 +148,13 @@ func main() {
 		}
 	})
 
+	msgListbox.Connect("row-activated", func() {
+		selectedRow := msgListbox.GetSelectedRow()
+		widgetRow, _ := (selectedRow.GetChild())
+		labelRow := widgetRow.(*gtk.Label)
+		fmt.Println(labelRow.GetText())
+	})
+
 	groupsListbox.Connect("row-activated", func() {
 		fmt.Println("Выбрана группа")
 		AutoScroll(scrolledWindow)
@@ -267,6 +274,7 @@ func main() {
 			_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupName})
 			rowGroup, _ := gtk.ListBoxRowNew()
 			labelGroup, _ := gtk.LabelNew(groupName)
+			labelGroup.SetSizeRequest(-1, 50)
 			markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", groupName)
 			labelGroup.SetMarkup(markup)
 			rowGroup.Add(labelGroup)
