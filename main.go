@@ -51,16 +51,21 @@ func main() {
 	}
 
 	// Получаем объект главного окна по ID
-	obj, err := b.GetObject("main_window")
+	objMain, err := b.GetObject("main_window")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
-	obj2, err := b.GetObject("regWin")
+	objReg, err := b.GetObject("regWin")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
 
-	obj3, err := b.GetObject("changeWin")
+	objChangeGroup, err := b.GetObject("changeWinGroup")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	objChangeMsg, err := b.GetObject("changeWinMsg")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
@@ -68,85 +73,97 @@ func main() {
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
-	win := obj.(*gtk.Window)
-	//win.Move(0, 0)
+	winMain := objMain.(*gtk.Window)
+	//winMain.Move(0, 0)
 
-	win.Connect("destroy", func() {
+	winMain.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
 
-	win2 := obj2.(*gtk.Window)
-	win2.Connect("delete-event", func() {
+	winReg := objReg.(*gtk.Window)
+	winReg.Connect("delete-event", func() {
 		gtk.MainQuit()
 
 	})
 
-	win3 := obj3.(*gtk.Dialog)
-	win3.Connect("delete-event", func() {
-		win3.Hide()
+	winChangeGroup := objChangeGroup.(*gtk.Dialog)
+	winChangeGroup.Connect("delete-event", func() {
+		winChangeGroup.Hide()
 
 	})
 
-	obj, _ = b.GetObject("msg_entry")
-	msgEntry := obj.(*gtk.Entry)
+	winChangeMsg := objChangeMsg.(*gtk.Dialog)
+	winChangeMsg.Connect("delete-event", func() {
+		winChangeMsg.Hide()
+
+	})
+
+	objMain, _ = b.GetObject("msg_entry")
+	msgEntry := objMain.(*gtk.Entry)
 
 	// Получаем кнопку
 
-	obj, _ = b.GetObject("msg_btn")
-	msgBtn := obj.(*gtk.Button)
+	objMain, _ = b.GetObject("msg_btn")
+	msgBtn := objMain.(*gtk.Button)
 
 	// Получаем метку
 
-	obj, _ = b.GetObject("guild_label")
-	guildLabel := obj.(*gtk.Label)
+	objMain, _ = b.GetObject("guild_label")
+	guildLabel := objMain.(*gtk.Label)
 
-	obj, _ = b.GetObject("user_label")
-	userLabel := obj.(*gtk.Label)
+	objMain, _ = b.GetObject("user_label")
+	userLabel := objMain.(*gtk.Label)
 
-	obj, _ = b.GetObject("registration_success_label")
-	registrationSuccessLabel := obj.(*gtk.Label)
+	objMain, _ = b.GetObject("registration_success_label")
+	registrationSuccessLabel := objMain.(*gtk.Label)
 
-	obj, _ = b.GetObject("msg_scroll")
-	scrolledWindow := obj.(*gtk.ScrolledWindow)
+	objMain, _ = b.GetObject("msg_scroll")
+	scrolledWindow := objMain.(*gtk.ScrolledWindow)
 
-	obj2, _ = b.GetObject("login_reg_btn")
-	loginRegBtn := obj2.(*gtk.Button)
+	objReg, _ = b.GetObject("login_reg_btn")
+	loginRegBtn := objReg.(*gtk.Button)
 
-	obj3, _ = b.GetObject("changeBtn")
-	changeBtn := obj3.(*gtk.Button)
+	objChangeMsg, _ = b.GetObject("changeBtnMsg")
+	changeBtnMsg := objChangeMsg.(*gtk.Button)
 
-	obj3, _ = b.GetObject("changeGroupEntry")
-	changeGroupEntry := obj3.(*gtk.Entry)
+	objChangeGroup, _ = b.GetObject("changeBtnGroup")
+	changeBtnGroup := objChangeGroup.(*gtk.Button)
 
-	obj, _ = b.GetObject("newuser_reg_btn")
-	newUserRegBtn := obj.(*gtk.Button)
+	objChangeGroup, _ = b.GetObject("changeGroupEntry")
+	changeGroupEntry := objChangeGroup.(*gtk.Entry)
 
-	obj, _ = b.GetObject("login_reg_entry")
-	loginRegEntry := obj.(*gtk.Entry)
+	objMain, _ = b.GetObject("btn_change_msg")
+	btnChangeMsg := objMain.(*gtk.Button)
 
-	obj, _ = b.GetObject("pass_reg_entry")
-	passRegEntry := obj.(*gtk.Entry)
+	objMain, _ = b.GetObject("newuser_reg_btn")
+	newUserRegBtn := objMain.(*gtk.Button)
 
-	obj, _ = b.GetObject("listbox_groups")
-	groupsListbox := obj.(*gtk.ListBox)
+	objMain, _ = b.GetObject("login_reg_entry")
+	loginRegEntry := objMain.(*gtk.Entry)
 
-	obj, _ = b.GetObject("add_group_entry")
-	addGroupEntry := obj.(*gtk.Entry)
+	objMain, _ = b.GetObject("pass_reg_entry")
+	passRegEntry := objMain.(*gtk.Entry)
 
-	obj, _ = b.GetObject("add_group_btn")
-	addGroupBtn := obj.(*gtk.Button)
+	objMain, _ = b.GetObject("listbox_groups")
+	groupsListbox := objMain.(*gtk.ListBox)
 
-	obj, _ = b.GetObject("btn_del_group")
-	delGroupBtn := obj.(*gtk.Button)
+	objMain, _ = b.GetObject("add_group_entry")
+	addGroupEntry := objMain.(*gtk.Entry)
 
-	obj, _ = b.GetObject("btn_change_group")
-	changeGroupBtn := obj.(*gtk.Button)
+	objMain, _ = b.GetObject("add_group_btn")
+	addGroupBtn := objMain.(*gtk.Button)
 
-	obj, _ = b.GetObject("exit_btn")
-	exitBtn := obj.(*gtk.Button)
+	objMain, _ = b.GetObject("btn_del_group")
+	delGroupBtn := objMain.(*gtk.Button)
 
-	obj, _ = b.GetObject("listbox_msg")
-	msgListbox := obj.(*gtk.ListBox)
+	objMain, _ = b.GetObject("btn_change_group")
+	changeGroupBtn := objMain.(*gtk.Button)
+
+	objMain, _ = b.GetObject("exit_btn")
+	exitBtn := objMain.(*gtk.Button)
+
+	objMain, _ = b.GetObject("listbox_msg")
+	msgListbox := objMain.(*gtk.ListBox)
 
 	groupsListbox.Connect("button-press-event", func(box *gtk.ListBox, event *gdk.Event) {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
@@ -154,7 +171,7 @@ func main() {
 			fmt.Println("DOUBLE")
 			groupsListbox.UnselectAll()
 			groupsListbox.ShowAll()
-			win.ShowAll()
+			winMain.ShowAll()
 			return // Ignore double-click events
 		}
 
@@ -173,7 +190,11 @@ func main() {
 		fmt.Println(labelRow.GetText())
 	})
 
-	changeBtn.Connect("clicked", func() {
+	changeBtnMsg.Connect("clicked", func() {
+		winChangeMsg.Hide()
+	})
+
+	changeBtnGroup.Connect("clicked", func() {
 		newGroup, _ := changeGroupEntry.GetText()
 		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, GroupName, newGroup})
 		GetGroups(conn, groupsListbox)
@@ -183,7 +204,7 @@ func main() {
 		clearListbox(msgListbox)
 		messagesArr = messagesArr[:0]
 		msgEntry.SetText("")
-		win3.Hide()
+		winChangeGroup.Hide()
 	})
 
 	groupsListbox.Connect("row-activated", func() {
@@ -207,7 +228,7 @@ func main() {
 			messagesArr = messagesArr[:0]
 			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
-			win.ShowAll()
+			winMain.ShowAll()
 
 			//Таймер потом включить
 			//t := time.NewTimer(1 * time.Second)
@@ -237,8 +258,12 @@ func main() {
 		guildLabel.SetText("")
 		messagesArr = messagesArr[:0]
 		fmt.Println("Выход")
-		win.Hide()
-		win2.ShowAll()
+		winMain.Hide()
+		winReg.ShowAll()
+	})
+
+	btnChangeMsg.Connect("clicked", func() {
+		winChangeMsg.Run()
 	})
 
 	delGroupBtn.Connect("clicked", func() {
@@ -260,7 +285,7 @@ func main() {
 			groupLabel := groupRow.(*gtk.Label)
 			groupText, _ := groupLabel.GetText()
 			changeGroupEntry.SetText(groupText)
-			win3.Run()
+			winChangeGroup.Run()
 		}
 
 	})
@@ -285,8 +310,8 @@ func main() {
 				loginRegEntry.SetText("")
 				passRegEntry.SetText("")
 				registrationSuccessLabel.SetText("\n")
-				win2.Hide()
-				win.ShowAll()
+				winReg.Hide()
+				winMain.ShowAll()
 
 			} else {
 				errText := "Ошибка! \n Неверный логин или пароль!"
@@ -312,7 +337,7 @@ func main() {
 			rowGroup.Add(labelGroup)
 			groupsListbox.Insert(rowGroup, 0)
 			addGroupEntry.SetText("")
-			win.ShowAll()
+			winMain.ShowAll()
 		}
 
 	})
@@ -327,7 +352,7 @@ func main() {
 			clearListbox(msgListbox)
 			GetMsg(conn, msgListbox)
 			msgListbox.ShowAll()
-			win.ShowAll()
+			winMain.ShowAll()
 			fmt.Println("Double click")
 			return // Ignore double-click events
 		}
@@ -349,13 +374,13 @@ func main() {
 			newMsg, _ := msgEntry.GetText()
 			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
 			GetMsg(conn, msgListbox)
-			win.ShowAll()
+			winMain.ShowAll()
 			AutoScroll(scrolledWindow)
 			msgEntry.SetText("")
 			scrolledWindow.ShowAll()
 			msgListbox.ShowAll()
 			msgListbox.SelectAll()
-			win.ShowAll()
+			winMain.ShowAll()
 		}
 	})
 
@@ -385,7 +410,7 @@ func main() {
 	//})
 
 	// Отображаем все виджеты в окне
-	win2.ShowAll()
+	winReg.ShowAll()
 
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
 	// выполнится gtk.MainQuit()
