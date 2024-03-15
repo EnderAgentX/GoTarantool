@@ -15,7 +15,8 @@ var myPass string
 var GroupName string
 var GroupId string
 var userId string
-var selectedRow *gtk.ListBoxRow
+var selectedRowMsg *gtk.ListBoxRow
+var selectedRowGroup *gtk.ListBoxRow
 
 type TimedMsg struct {
 	msg  string
@@ -59,6 +60,11 @@ func main() {
 		log.Fatal("Ошибка:", err)
 	}
 
+	obj3, err := b.GetObject("changeWin")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
@@ -72,6 +78,12 @@ func main() {
 	win2 := obj2.(*gtk.Window)
 	win2.Connect("delete-event", func() {
 		gtk.MainQuit()
+
+	})
+
+	win3 := obj3.(*gtk.Dialog)
+	win3.Connect("delete-event", func() {
+		win3.Hide()
 
 	})
 
@@ -99,6 +111,12 @@ func main() {
 
 	obj2, _ = b.GetObject("login_reg_btn")
 	loginRegBtn := obj2.(*gtk.Button)
+
+	obj3, _ = b.GetObject("changeBtn")
+	changeBtn := obj3.(*gtk.Button)
+
+	obj3, _ = b.GetObject("changeGroupEntry")
+	changeGroupEntry := obj3.(*gtk.Entry)
 
 	obj, _ = b.GetObject("newuser_reg_btn")
 	newUserRegBtn := obj.(*gtk.Button)
@@ -149,10 +167,23 @@ func main() {
 	})
 
 	msgListbox.Connect("row-activated", func() {
-		selectedRow := msgListbox.GetSelectedRow()
-		widgetRow, _ := (selectedRow.GetChild())
+		selectedRowMsg := msgListbox.GetSelectedRow()
+		widgetRow, _ := (selectedRowMsg.GetChild())
 		labelRow := widgetRow.(*gtk.Label)
 		fmt.Println(labelRow.GetText())
+	})
+
+	changeBtn.Connect("clicked", func() {
+		newGroup, _ := changeGroupEntry.GetText()
+		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, GroupName, newGroup})
+		GetGroups(conn, groupsListbox)
+		selectedRowGroup, _ = gtk.ListBoxRowNew()
+		addGroupEntry.SetText("")
+		GroupName = newGroup
+		clearListbox(msgListbox)
+		messagesArr = messagesArr[:0]
+		msgEntry.SetText("")
+		win3.Hide()
 	})
 
 	groupsListbox.Connect("row-activated", func() {
@@ -160,14 +191,14 @@ func main() {
 		AutoScroll(scrolledWindow)
 		tempRow := groupsListbox.GetSelectedRow()
 		fmt.Println("tempRow.GetIndex()", tempRow.GetIndex())
-		fmt.Println("selectedRow.GetIndex())", selectedRow.GetIndex())
-		if tempRow.GetIndex() == selectedRow.GetIndex() {
+		fmt.Println("selectedRow.GetIndex())", selectedRowGroup.GetIndex())
+		if tempRow.GetIndex() == selectedRowGroup.GetIndex() {
 			groupsListbox.UnselectAll()
 			clearListbox(msgListbox)
-			selectedRow = groupsListbox.GetSelectedRow()
+			selectedRowGroup = groupsListbox.GetSelectedRow()
 		} else {
-			selectedRow = groupsListbox.GetSelectedRow()
-			labelRow, _ := selectedRow.GetChild()
+			selectedRowGroup = groupsListbox.GetSelectedRow()
+			labelRow, _ := selectedRowGroup.GetChild()
 			groupLabel := labelRow.(*gtk.Label)
 			textLabel, _ := groupLabel.GetText()
 			fmt.Println(textLabel)
@@ -200,7 +231,8 @@ func main() {
 		msgListbox.UnselectAll()
 		clearListbox(groupsListbox)
 		clearListbox(msgListbox)
-		selectedRow, _ = gtk.ListBoxRowNew()
+		selectedRowGroup, _ = gtk.ListBoxRowNew()
+		selectedRowMsg, _ = gtk.ListBoxRowNew()
 		userLabel.SetText("")
 		guildLabel.SetText("")
 		messagesArr = messagesArr[:0]
@@ -211,8 +243,8 @@ func main() {
 
 	delGroupBtn.Connect("clicked", func() {
 		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, GroupName})
-		groupsListbox.Remove(selectedRow)
-		selectedRow, _ = gtk.ListBoxRowNew()
+		groupsListbox.Remove(selectedRowGroup)
+		selectedRowGroup, _ = gtk.ListBoxRowNew()
 		clearListbox(msgListbox)
 		guildLabel.SetText("")
 		messagesArr = messagesArr[:0]
@@ -221,15 +253,15 @@ func main() {
 	})
 
 	changeGroupBtn.Connect("clicked", func() {
-		newGroup, _ := addGroupEntry.GetText()
-		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, GroupName, newGroup})
-		GetGroups(conn, groupsListbox)
-		selectedRow, _ = gtk.ListBoxRowNew()
-		addGroupEntry.SetText("")
-		GroupName = newGroup
-		clearListbox(msgListbox)
-		messagesArr = messagesArr[:0]
-		msgEntry.SetText("")
+		fmt.Println(selectedRowGroup)
+		fmt.Println("......")
+		if selectedRowGroup != nil {
+			groupRow, _ := selectedRowGroup.GetChild()
+			groupLabel := groupRow.(*gtk.Label)
+			groupText, _ := groupLabel.GetText()
+			changeGroupEntry.SetText(groupText)
+			win3.Run()
+		}
 
 	})
 
