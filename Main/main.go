@@ -25,7 +25,7 @@ type TimedMsg struct {
 }
 
 type MessageStruct struct {
-	msgId string
+	msgId   string
 	message string
 	user    string
 	msgTime uint64
@@ -243,7 +243,7 @@ func main() {
 		fmt.Println("selectedRow.GetIndex()) msg:", selectedRowMsg.GetIndex())
 		if tempRow.GetIndex() == selectedRowMsg.GetIndex() {
 			msgListbox.UnselectAll()
-			selectedRowMsg = msgListbox.GetSelectedRow()
+			selectedRowMsg, _ = gtk.ListBoxRowNew()
 		} else {
 			selectedRowMsg = msgListbox.GetSelectedRow()
 		}
@@ -280,9 +280,9 @@ func main() {
 			clearListbox(msgListbox)
 			selectedRowGroup, _ = gtk.ListBoxRowNew()
 			selectedRowMsg, _ = gtk.ListBoxRowNew()
-			fmt.Println("Индекс сообщения",selectedRowMsg.GetIndex())
+			fmt.Println("Индекс сообщения", selectedRowMsg.GetIndex())
 		} else {
-			selectedRowMsg, _ = gtk.ListBoxRowNew()///////////
+			selectedRowMsg, _ = gtk.ListBoxRowNew() ///////////
 			selectedRowGroup = groupsListbox.GetSelectedRow()
 			selectedRowGroupId, _ := selectedRowGroup.GetName()
 			fmt.Println("group id ", selectedRowGroupId)
