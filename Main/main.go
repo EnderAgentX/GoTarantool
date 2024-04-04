@@ -25,6 +25,7 @@ type TimedMsg struct {
 }
 
 type MessageStruct struct {
+	msgId string
 	message string
 	user    string
 	msgTime uint64
@@ -236,10 +237,20 @@ func main() {
 	})
 
 	msgListbox.Connect("row-activated", func() {
-		selectedRowMsg := msgListbox.GetSelectedRow()
-		widgetRow, _ := (selectedRowMsg.GetChild())
-		labelRow := widgetRow.(*gtk.Label)
-		fmt.Println(labelRow.GetText())
+
+		tempRow := msgListbox.GetSelectedRow()
+		fmt.Println("tempRow.GetIndex() msg:", tempRow.GetIndex())
+		fmt.Println("selectedRow.GetIndex()) msg:", selectedRowMsg.GetIndex())
+		if tempRow.GetIndex() == selectedRowMsg.GetIndex() {
+			msgListbox.UnselectAll()
+			selectedRowMsg = msgListbox.GetSelectedRow()
+		} else {
+			selectedRowMsg = msgListbox.GetSelectedRow()
+		}
+
+		//widgetRow, _ := (selectedRowMsg.GetChild())
+		//labelRow := widgetRow.(*gtk.Label)
+		//fmt.Println(labelRow.GetText())
 	})
 
 	changeBtnMsg.Connect("clicked", func() {
@@ -262,13 +273,16 @@ func main() {
 		fmt.Println("Выбрана группа")
 		AutoScroll(scrolledWindow)
 		tempRow := groupsListbox.GetSelectedRow()
-		fmt.Println("tempRow.GetIndex()", tempRow.GetIndex())
-		fmt.Println("selectedRow.GetIndex())", selectedRowGroup.GetIndex())
+		fmt.Println("tempRow.GetIndex() group:", tempRow.GetIndex())
+		fmt.Println("selectedRow.GetIndex()) group:", selectedRowGroup.GetIndex())
 		if tempRow.GetIndex() == selectedRowGroup.GetIndex() {
 			groupsListbox.UnselectAll()
 			clearListbox(msgListbox)
-			selectedRowGroup = groupsListbox.GetSelectedRow()
+			selectedRowGroup, _ = gtk.ListBoxRowNew()
+			selectedRowMsg, _ = gtk.ListBoxRowNew()
+			fmt.Println("Индекс сообщения",selectedRowMsg.GetIndex())
 		} else {
+			selectedRowMsg, _ = gtk.ListBoxRowNew()///////////
 			selectedRowGroup = groupsListbox.GetSelectedRow()
 			selectedRowGroupId, _ := selectedRowGroup.GetName()
 			fmt.Println("group id ", selectedRowGroupId)
@@ -632,7 +646,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	var newMessages []MessageStruct
 	for i := 0; i < cntMsg; i++ {
 		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
-		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64)})
+		newMessages = append(newMessages, MessageStruct{"1", newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64)})
 	}
 
 	if cntMsg != 0 {
