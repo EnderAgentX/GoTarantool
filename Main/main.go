@@ -4,6 +4,7 @@ import (
 	"GoTarantool/Server"
 	"fmt"
 	"log"
+	"unicode"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -12,8 +13,8 @@ import (
 
 var MyUser string
 var myPass string
-var GroupName string
-var GroupId string
+var SelectedGroupName string
+var SelectedGroupId string
 var userId string
 var selectedRowMsg *gtk.ListBoxRow
 var selectedRowGroup *gtk.ListBoxRow
@@ -51,6 +52,10 @@ func main() {
 	}
 
 	// Получаем объект главного окна по ID
+
+	//Объекты 
+
+
 	objMain, err := b.GetObject("main_window")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
@@ -66,6 +71,11 @@ func main() {
 	}
 
 	objChangeMsg, err := b.GetObject("changeWinMsg")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	objNewGroupWin, err := b.GetObject("newGroupWin")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
@@ -98,6 +108,10 @@ func main() {
 
 	})
 
+	winNewGroup := objNewGroupWin.(*gtk.Dialog)
+
+	
+
 	objMain, _ = b.GetObject("msg_entry")
 	msgEntry := objMain.(*gtk.Entry)
 
@@ -116,6 +130,9 @@ func main() {
 
 	objMain, _ = b.GetObject("registration_success_label")
 	registrationSuccessLabel := objMain.(*gtk.Label)
+
+	objMain, _ = b.GetObject("labelCheckId")
+	labelCheckId := objMain.(*gtk.Label)
 
 	objMain, _ = b.GetObject("msg_scroll")
 	scrolledWindow := objMain.(*gtk.ScrolledWindow)
@@ -147,8 +164,11 @@ func main() {
 	objMain, _ = b.GetObject("listbox_groups")
 	groupsListbox := objMain.(*gtk.ListBox)
 
-	objMain, _ = b.GetObject("add_group_entry")
-	addGroupEntry := objMain.(*gtk.Entry)
+	objNewGroupWin, _ = b.GetObject("entryNewGroupName")
+	entryNewGroupName := objNewGroupWin.(*gtk.Entry)
+
+	objNewGroupWin, _ = b.GetObject("entryNewGroupId")
+	entryNewGroupId := objNewGroupWin.(*gtk.Entry)
 
 	objMain, _ = b.GetObject("add_group_btn")
 	addGroupBtn := objMain.(*gtk.Button)
@@ -164,6 +184,30 @@ func main() {
 
 	objMain, _ = b.GetObject("listbox_msg")
 	msgListbox := objMain.(*gtk.ListBox)
+
+	objNewGroupWin, _ = b.GetObject("newGroupBtn")
+	newGroupBtn := objNewGroupWin.(*gtk.Button)
+
+	objNewGroupWin, _ = b.GetObject("btnCheckId")
+	btnCheckId := objNewGroupWin.(*gtk.Button)
+
+	winNewGroup.Connect("delete-event", func() {
+		entryNewGroupId.SetText("")
+		entryNewGroupName.SetText("")
+		labelCheckId.SetText("")
+		winNewGroup.Hide()
+
+	})
+
+
+
+
+
+
+
+
+
+
 
 	groupsListbox.Connect("button-press-event", func(box *gtk.ListBox, event *gdk.Event) {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
@@ -196,11 +240,10 @@ func main() {
 
 	changeBtnGroup.Connect("clicked", func() {
 		newGroup, _ := changeGroupEntry.GetText()
-		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, GroupName, newGroup})
+		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, SelectedGroupName, newGroup})
 		GetGroups(conn, groupsListbox)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
-		addGroupEntry.SetText("")
-		GroupName = newGroup
+		SelectedGroupName = newGroup
 		clearListbox(msgListbox)
 		messagesArr = messagesArr[:0]
 		msgEntry.SetText("")
@@ -219,12 +262,15 @@ func main() {
 			selectedRowGroup = groupsListbox.GetSelectedRow()
 		} else {
 			selectedRowGroup = groupsListbox.GetSelectedRow()
+			selectedRowGroupId, _ := selectedRowGroup.GetName()
+			fmt.Println("group id ", selectedRowGroupId)
+
 			labelRow, _ := selectedRowGroup.GetChild()
 			groupLabel := labelRow.(*gtk.Label)
 			textLabel, _ := groupLabel.GetText()
-			fmt.Println(textLabel)
-			GroupName = textLabel
-			guildLabel.SetText(GroupName)
+			SelectedGroupName = textLabel
+			SelectedGroupId = selectedRowGroupId
+			guildLabel.SetText(SelectedGroupName)
 			messagesArr = messagesArr[:0]
 			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
@@ -262,19 +308,76 @@ func main() {
 		winReg.ShowAll()
 	})
 
+	newGroupBtn.Connect("clicked", func() {
+		groupName, _ := entryNewGroupName.GetText()
+		groupId, _ := entryNewGroupId.GetText()
+
+		info, _ := conn.Call("fn.check_group_id", []interface{}{groupId})
+		tuples := info.Tuples()
+		checked := tuples[0][0].(bool)
+		if checked == true {
+			if MyUser != "" && !isOnlyWhitespace(groupName) && !isOnlyWhitespace(groupId) {
+				fmt.Println(MyUser, groupName, groupId)
+				_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupId, groupName})
+	
+				rowGroup, _ := gtk.ListBoxRowNew()
+				rowGroup.SetName(groupId)
+				labelGroup, _ := gtk.LabelNew(groupName)
+				labelGroup.SetSizeRequest(-1, 50)
+				markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", groupName)
+				labelGroup.SetMarkup(markup)
+				rowGroup.Add(labelGroup)
+				groupsListbox.Insert(rowGroup, 0)
+
+				entryNewGroupId.SetText("")
+				entryNewGroupName.SetText("")
+				labelCheckId.SetText("")
+
+				winNewGroup.Close()
+				winMain.ShowAll()
+			}
+		} else {
+			checkedText := "Тег занят"
+			markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", checkedText)
+			labelCheckId.SetText(checkedText)
+			labelCheckId.SetMarkup(markup)
+		}
+
+		
+
+		
+	})
+
+	btnCheckId.Connect("clicked", func() {
+		groupId, _ := entryNewGroupId.GetText()
+		info, _ := conn.Call("fn.check_group_id", []interface{}{groupId})
+		tuples := info.Tuples()
+		checked := tuples[0][0].(bool)
+		if checked == true {
+			checkedText := "Тег свободен"
+			markup := fmt.Sprintf("<span size='15000' foreground='green'>%s</span>", checkedText)
+			labelCheckId.SetText(checkedText)
+			labelCheckId.SetMarkup(markup)
+		} else {
+			checkedText := "Тег занят"
+			markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", checkedText)
+			labelCheckId.SetText(checkedText)
+			labelCheckId.SetMarkup(markup)
+		}
+	})
+
 	btnChangeMsg.Connect("clicked", func() {
 		winChangeMsg.Run()
 	})
 
 	delGroupBtn.Connect("clicked", func() {
-		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, GroupName})
+		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupName})
 		groupsListbox.Remove(selectedRowGroup)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
 		clearListbox(msgListbox)
 		guildLabel.SetText("")
 		messagesArr = messagesArr[:0]
 		msgEntry.SetText("")
-		addGroupEntry.SetText("")
 	})
 
 	changeGroupBtn.Connect("clicked", func() {
@@ -325,20 +428,7 @@ func main() {
 	})
 
 	addGroupBtn.Connect("clicked", func() {
-		groupName, _ := addGroupEntry.GetText()
-		if MyUser != "" && groupName != "" && groupName != " " {
-			fmt.Println(groupName)
-			_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupName})
-			rowGroup, _ := gtk.ListBoxRowNew()
-			labelGroup, _ := gtk.LabelNew(groupName)
-			labelGroup.SetSizeRequest(-1, 50)
-			markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", groupName)
-			labelGroup.SetMarkup(markup)
-			rowGroup.Add(labelGroup)
-			groupsListbox.Insert(rowGroup, 0)
-			addGroupEntry.SetText("")
-			winMain.ShowAll()
-		}
+		winNewGroup.Run()
 
 	})
 
@@ -346,7 +436,7 @@ func main() {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
 		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS || buttonEvent.Type() == gdk.EVENT_3BUTTON_PRESS {
 			newMsg, _ := msgEntry.GetText()
-			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
+			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupName, MyUser})
 			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
 			clearListbox(msgListbox)
@@ -358,10 +448,10 @@ func main() {
 		}
 
 		newMsg, _ := msgEntry.GetText()
-		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
+		_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupId, MyUser})
 		GetMsg(conn, msgListbox)
 		AutoScroll(scrolledWindow)
-		//AutoScroll(scrolledWindow)
+		msgEntry.SetText("")
 
 	})
 
@@ -372,7 +462,7 @@ func main() {
 			text, _ := entry.GetText()
 			log.Println("Enter key pressed in entry. Text entered:", text)
 			newMsg, _ := msgEntry.GetText()
-			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, GroupName, MyUser})
+			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupId, MyUser})
 			GetMsg(conn, msgListbox)
 			winMain.ShowAll()
 			AutoScroll(scrolledWindow)
@@ -418,6 +508,17 @@ func main() {
 
 }
 
+
+
+
+
+
+
+
+
+
+
+
 func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 	scrolledWindow.ShowAll()
 	adjustment := scrolledWindow.GetVAdjustment()
@@ -457,19 +558,31 @@ func clearListbox(ListBox *gtk.ListBox) {
 	ListBox.ShowAll()
 }
 
+func isOnlyWhitespace(input string) bool {
+	for _, char := range input {
+		if !unicode.IsSpace(char) { // Проверяем, что символ не является пробелом
+			return false
+		}
+	}
+	return true
+}
+
 func GetGroups(conn *tarantool.Connection, groupsListbox *gtk.ListBox) {
 	clearListbox(groupsListbox)
 	infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{MyUser})
 	userGroupsTuples := infoUserGroups.Tuples()
-	for i := 0; i < len(userGroupsTuples[0]); i++ {
+	fmt.Println(userGroupsTuples)
+	for i := 0; i < len(userGroupsTuples); i++ {
 		rowGroup, _ := gtk.ListBoxRowNew()
-		labelGroup, _ := gtk.LabelNew(userGroupsTuples[0][i].(string))
+		rowGroup.SetName(userGroupsTuples[i][0].(string))
+		labelGroup, _ := gtk.LabelNew(userGroupsTuples[i][1].(string))
 		labelGroup.SetSizeRequest(-1, 50)
 		tempText, _ := labelGroup.GetText()
 		markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", tempText)
 		labelGroup.SetMarkup(markup)
 		rowGroup.Add(labelGroup)
 		groupsListbox.Insert(rowGroup, 0)
+
 	}
 	groupsListbox.ShowAll()
 }
@@ -485,10 +598,9 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 		lastTimedMsg = messagesArr[len(messagesArr)-1].time
 	}
 
-	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{GroupName, lastTimedMsg})
+	infoTimedMsg, _ := conn.Call("fn.time_group_msg", []interface{}{SelectedGroupId, lastTimedMsg})
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
-	fmt.Println("TESTTT")
 	fmt.Println("lastTimedMsg", lastTimedMsg)
 
 	var newMessages []MessageStruct
@@ -503,7 +615,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 			msgUser := newMessages[i].user
 			msgTime := newMessages[i].msgTime
 
-			newMsg := msgUser + "(" + GroupName + "): " + msgText
+			newMsg := msgUser + "(" + SelectedGroupName + "): " + msgText
 
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 
