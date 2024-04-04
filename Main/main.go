@@ -53,8 +53,7 @@ func main() {
 
 	// Получаем объект главного окна по ID
 
-	//Объекты 
-
+	//Объекты
 
 	objMain, err := b.GetObject("main_window")
 	if err != nil {
@@ -76,6 +75,11 @@ func main() {
 	}
 
 	objNewGroupWin, err := b.GetObject("newGroupWin")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
+	objJoinGroupWin, err := b.GetObject("joinGroupWin")
 	if err != nil {
 		log.Fatal("Ошибка:", err)
 	}
@@ -110,7 +114,7 @@ func main() {
 
 	winNewGroup := objNewGroupWin.(*gtk.Dialog)
 
-	
+	winJoinGroup := objJoinGroupWin.(*gtk.Dialog)
 
 	objMain, _ = b.GetObject("msg_entry")
 	msgEntry := objMain.(*gtk.Entry)
@@ -161,6 +165,9 @@ func main() {
 	objMain, _ = b.GetObject("pass_reg_entry")
 	passRegEntry := objMain.(*gtk.Entry)
 
+	objMain, _ = b.GetObject("joinGroupEntry")
+	joinGroupEntry := objMain.(*gtk.Entry)
+
 	objMain, _ = b.GetObject("listbox_groups")
 	groupsListbox := objMain.(*gtk.ListBox)
 
@@ -191,6 +198,12 @@ func main() {
 	objNewGroupWin, _ = b.GetObject("btnCheckId")
 	btnCheckId := objNewGroupWin.(*gtk.Button)
 
+	objMain, _ = b.GetObject("join_group_btn")
+	joinGroupBtn := objMain.(*gtk.Button)
+
+	objMain, _ = b.GetObject("joinGroupBtnConfirm")
+	joinGroupBtnConfirm := objMain.(*gtk.Button)
+
 	winNewGroup.Connect("delete-event", func() {
 		entryNewGroupId.SetText("")
 		entryNewGroupName.SetText("")
@@ -199,15 +212,10 @@ func main() {
 
 	})
 
-
-
-
-
-
-
-
-
-
+	winJoinGroup.Connect("delete-event", func() {
+		joinGroupEntry.SetText("")
+		winJoinGroup.Hide()
+	})
 
 	groupsListbox.Connect("button-press-event", func(box *gtk.ListBox, event *gdk.Event) {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
@@ -240,7 +248,7 @@ func main() {
 
 	changeBtnGroup.Connect("clicked", func() {
 		newGroup, _ := changeGroupEntry.GetText()
-		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, SelectedGroupName, newGroup})
+		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, SelectedGroupId, newGroup})
 		GetGroups(conn, groupsListbox)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
 		SelectedGroupName = newGroup
@@ -314,12 +322,12 @@ func main() {
 
 		info, _ := conn.Call("fn.check_group_id", []interface{}{groupId})
 		tuples := info.Tuples()
-		checked := tuples[0][0].(bool)
-		if checked == true {
+		checked := tuples[0][0].(string)
+		if checked == "true" {
 			if MyUser != "" && !isOnlyWhitespace(groupName) && !isOnlyWhitespace(groupId) {
 				fmt.Println(MyUser, groupName, groupId)
 				_, _ = conn.Call("fn.new_group", []interface{}{MyUser, groupId, groupName})
-	
+
 				rowGroup, _ := gtk.ListBoxRowNew()
 				rowGroup.SetName(groupId)
 				labelGroup, _ := gtk.LabelNew(groupName)
@@ -336,29 +344,28 @@ func main() {
 				winNewGroup.Close()
 				winMain.ShowAll()
 			}
-		} else {
+		}
+		if checked == "false" {
 			checkedText := "Тег занят"
 			markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", checkedText)
 			labelCheckId.SetText(checkedText)
 			labelCheckId.SetMarkup(markup)
 		}
 
-		
-
-		
 	})
 
 	btnCheckId.Connect("clicked", func() {
 		groupId, _ := entryNewGroupId.GetText()
 		info, _ := conn.Call("fn.check_group_id", []interface{}{groupId})
 		tuples := info.Tuples()
-		checked := tuples[0][0].(bool)
-		if checked == true {
+		checked := tuples[0][0].(string)
+		if checked == "true" {
 			checkedText := "Тег свободен"
 			markup := fmt.Sprintf("<span size='15000' foreground='green'>%s</span>", checkedText)
 			labelCheckId.SetText(checkedText)
 			labelCheckId.SetMarkup(markup)
-		} else {
+		}
+		if checked == "false" {
 			checkedText := "Тег занят"
 			markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", checkedText)
 			labelCheckId.SetText(checkedText)
@@ -371,7 +378,7 @@ func main() {
 	})
 
 	delGroupBtn.Connect("clicked", func() {
-		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupName})
+		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupId})
 		groupsListbox.Remove(selectedRowGroup)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
 		clearListbox(msgListbox)
@@ -430,6 +437,31 @@ func main() {
 	addGroupBtn.Connect("clicked", func() {
 		winNewGroup.Run()
 
+	})
+
+	joinGroupBtn.Connect("clicked", func() {
+		winJoinGroup.Run()
+	})
+
+	joinGroupBtnConfirm.Connect("clicked", func() {
+		groupId, _ := joinGroupEntry.GetText()
+		info, _ := conn.Call("fn.join_group", []interface{}{MyUser, groupId})
+		fmt.Println(info)
+		tuples := info.Tuples()
+		joinGroupName := tuples[0][0].(string)
+
+		rowGroup, _ := gtk.ListBoxRowNew()
+		rowGroup.SetName(groupId)
+		labelGroup, _ := gtk.LabelNew(joinGroupName)
+		labelGroup.SetSizeRequest(-1, 50)
+		markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", joinGroupName)
+		labelGroup.SetMarkup(markup)
+		rowGroup.Add(labelGroup)
+		groupsListbox.Insert(rowGroup, 0)
+
+		joinGroupEntry.SetText("")
+		winJoinGroup.Hide()
+		winMain.ShowAll()
 	})
 
 	msgBtn.Connect("button-press-event", func(btn *gtk.Button, event *gdk.Event) {
@@ -508,17 +540,6 @@ func main() {
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
 func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 	scrolledWindow.ShowAll()
 	adjustment := scrolledWindow.GetVAdjustment()
@@ -572,6 +593,11 @@ func GetGroups(conn *tarantool.Connection, groupsListbox *gtk.ListBox) {
 	infoUserGroups, _ := conn.Call("fn.get_user_groups", []interface{}{MyUser})
 	userGroupsTuples := infoUserGroups.Tuples()
 	fmt.Println(userGroupsTuples)
+	fmt.Println(len(userGroupsTuples))
+	fmt.Println(len(userGroupsTuples[0]))
+	if len(userGroupsTuples) == 1 && len(userGroupsTuples[0]) == 0 {
+		return
+	}
 	for i := 0; i < len(userGroupsTuples); i++ {
 		rowGroup, _ := gtk.ListBoxRowNew()
 		rowGroup.SetName(userGroupsTuples[i][0].(string))

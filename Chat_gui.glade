@@ -2,112 +2,6 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkApplicationWindow" id="CenterWin">
-    <property name="can-focus">False</property>
-    <property name="window-position">center-always</property>
-    <property name="default-width">1920</property>
-    <property name="default-height">1080</property>
-    <property name="show-menubar">False</property>
-    <child>
-      <placeholder/>
-    </child>
-  </object>
-  <object class="GtkWindow">
-    <property name="can-focus">False</property>
-    <property name="default-width">440</property>
-    <property name="default-height">250</property>
-    <child>
-      <!-- n-columns=2 n-rows=6 -->
-      <object class="GtkGrid">
-        <property name="width-request">100</property>
-        <property name="height-request">100</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="halign">center</property>
-        <property name="valign">center</property>
-        <property name="border-width">100</property>
-        <property name="row-spacing">20</property>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="label" translatable="yes">Логин</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">0</property>
-            <property name="width">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkEntry">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">1</property>
-            <property name="width">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="label" translatable="yes">Пароль</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">2</property>
-            <property name="width">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkEntry">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">3</property>
-            <property name="width">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton">
-            <property name="label" translatable="yes">button</property>
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="receives-default">True</property>
-            <property name="image-position">bottom</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">5</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton">
-            <property name="label" translatable="yes">button</property>
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="receives-default">True</property>
-            <property name="image-position">bottom</property>
-          </object>
-          <packing>
-            <property name="left-attach">1</property>
-            <property name="top-attach">5</property>
-          </packing>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-      </object>
-    </child>
-  </object>
   <object class="GtkDialog" id="changeWinGroup">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Изменить группу</property>
@@ -146,6 +40,7 @@
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">center</property>
             <property name="vexpand">True</property>
             <property name="border-width">50</property>
             <property name="row-spacing">30</property>
@@ -218,6 +113,7 @@
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">center</property>
             <property name="vexpand">True</property>
             <property name="border-width">50</property>
             <property name="row-spacing">30</property>
@@ -236,6 +132,81 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Введите новое сообщение</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkDialog" id="joinGroupWin">
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Вступление в группу</property>
+    <property name="type-hint">dialog</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton" id="joinGroupBtnConfirm">
+                <property name="label" translatable="yes">Вступить</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <!-- n-columns=1 n-rows=2 -->
+          <object class="GtkGrid">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="vexpand">True</property>
+            <property name="border-width">50</property>
+            <property name="row-spacing">30</property>
+            <child>
+              <object class="GtkEntry" id="joinGroupEntry">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Введите тег группы</property>
+                <property name="justify">center</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -514,7 +485,7 @@
             </child>
             <child>
               <object class="GtkButton" id="btn_del_group">
-                <property name="label" translatable="yes">Удалить группу</property>
+                <property name="label" translatable="yes">Выйти из группы</property>
                 <property name="height-request">50</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
