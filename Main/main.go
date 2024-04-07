@@ -25,10 +25,10 @@ type TimedMsg struct {
 }
 
 type MessageStruct struct {
-	msgId   string
 	message string
 	user    string
 	msgTime uint64
+	msgId   string
 }
 
 var messagesArr = make([]TimedMsg, 0)
@@ -146,7 +146,7 @@ func main() {
 	loginRegBtn := objReg.(*gtk.Button)
 
 	objChangeMsg, _ = b.GetObject("changeBtnMsg")
-	changeBtnMsg := objChangeMsg.(*gtk.Button)
+	changeBtnMsgConfirm := objChangeMsg.(*gtk.Button)
 
 	objChangeGroup, _ = b.GetObject("changeBtnGroup")
 	changeBtnGroup := objChangeGroup.(*gtk.Button)
@@ -177,6 +177,9 @@ func main() {
 
 	objNewGroupWin, _ = b.GetObject("entryNewGroupId")
 	entryNewGroupId := objNewGroupWin.(*gtk.Entry)
+
+	objChangeMsg, _ = b.GetObject("changeMsgEntry")
+	changeMsgEntry := objChangeMsg.(*gtk.Entry)
 
 	objMain, _ = b.GetObject("add_group_btn")
 	addGroupBtn := objMain.(*gtk.Button)
@@ -241,6 +244,9 @@ func main() {
 		tempRow := msgListbox.GetSelectedRow()
 		fmt.Println("tempRow.GetIndex() msg:", tempRow.GetIndex())
 		fmt.Println("selectedRow.GetIndex()) msg:", selectedRowMsg.GetIndex())
+
+		fmt.Println(tempRow.GetName())
+
 		if tempRow.GetIndex() == selectedRowMsg.GetIndex() {
 			msgListbox.UnselectAll()
 			selectedRowMsg, _ = gtk.ListBoxRowNew()
@@ -253,7 +259,21 @@ func main() {
 		//fmt.Println(labelRow.GetText())
 	})
 
-	changeBtnMsg.Connect("clicked", func() {
+	changeBtnMsgConfirm.Connect("clicked", func() {
+		fmt.Println(selectedRowMsg.GetName())
+		fmt.Println(changeMsgEntry.GetText())
+		msgId, _ := selectedRowMsg.GetName()
+		msgText, _ := changeMsgEntry.GetText()
+		info, _ := conn.Call("fn.edit_msg", []interface{}{msgId, msgText})
+		msgTuples := info.Tuples()
+		newMsgUser := msgTuples[0][0].(string)
+		newMsgGroup := msgTuples[1][0].(string)
+		newMsgText := msgTuples[2][0].(string)
+		row, _ := selectedRowMsg.GetChild()
+		rowLabel := row.(*gtk.Label)
+		rowLabel.SetText(newMsgUser + "(" + newMsgGroup + "): " + newMsgText)
+
+		//TODO автозаполнение поля изменения сообщения,изменение только своего сообщения
 		winChangeMsg.Hide()
 	})
 
@@ -642,18 +662,21 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	newMessagesCntTuples := infoTimedMsg.Tuples()
 	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
 	fmt.Println("lastTimedMsg", lastTimedMsg)
+	//fmt.Println(newMessagesCntTuples)
 
 	var newMessages []MessageStruct
 	for i := 0; i < cntMsg; i++ {
 		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
-		newMessages = append(newMessages, MessageStruct{"1", newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64)})
+		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64), newMessagesTuples[3].(string)})
 	}
 
 	if cntMsg != 0 {
 		for i := 0; i < cntMsg; i++ {
+
 			msgText := newMessages[i].message
 			msgUser := newMessages[i].user
 			msgTime := newMessages[i].msgTime
+			msgId := newMessages[i].msgId
 
 			newMsg := msgUser + "(" + SelectedGroupName + "): " + msgText
 
@@ -666,6 +689,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 			labelMsg.SetHAlign(gtk.ALIGN_START)
 			labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
 			rowMsg.Add(labelMsg)
+			rowMsg.SetName(msgId)
 			//msgListBox.Insert(rowMsg, 1)
 			msgListBox.Prepend(rowMsg)
 
