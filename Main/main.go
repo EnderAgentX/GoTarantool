@@ -259,6 +259,15 @@ func main() {
 		//fmt.Println(labelRow.GetText())
 	})
 
+	btnChangeMsg.Connect("clicked", func() {
+		msgId, _ := selectedRowMsg.GetName()
+		info, _ := conn.Call("fn.get_selected_msg", []interface{}{msgId})
+		msgTuples := info.Tuples()
+		newMsgText := msgTuples[2][0].(string)
+		changeMsgEntry.SetText(newMsgText)
+		winChangeMsg.Run()
+	})
+
 	changeBtnMsgConfirm.Connect("clicked", func() {
 		fmt.Println(selectedRowMsg.GetName())
 		fmt.Println(changeMsgEntry.GetText())
@@ -266,6 +275,7 @@ func main() {
 		msgText, _ := changeMsgEntry.GetText()
 		info, _ := conn.Call("fn.edit_msg", []interface{}{msgId, msgText})
 		msgTuples := info.Tuples()
+		fmt.Println(msgTuples)
 		newMsgUser := msgTuples[0][0].(string)
 		newMsgGroup := msgTuples[1][0].(string)
 		newMsgText := msgTuples[2][0].(string)
@@ -405,10 +415,6 @@ func main() {
 			labelCheckId.SetText(checkedText)
 			labelCheckId.SetMarkup(markup)
 		}
-	})
-
-	btnChangeMsg.Connect("clicked", func() {
-		winChangeMsg.Run()
 	})
 
 	delGroupBtn.Connect("clicked", func() {
