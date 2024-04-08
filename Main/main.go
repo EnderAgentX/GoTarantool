@@ -85,6 +85,11 @@ func main() {
 		log.Fatal("Ошибка:", err)
 	}
 
+	objWarningWin, err := b.GetObject("warningWin")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
@@ -117,6 +122,12 @@ func main() {
 
 	winJoinGroup := objJoinGroupWin.(*gtk.Dialog)
 
+	warningWin := objWarningWin.(*gtk.Dialog)
+	warningWin.Connect("delete-event", func() {
+		warningWin.Hide()
+
+	})
+
 	objMain, _ = b.GetObject("msg_entry")
 	msgEntry := objMain.(*gtk.Entry)
 
@@ -129,6 +140,9 @@ func main() {
 
 	objMain, _ = b.GetObject("guild_label")
 	guildLabel := objMain.(*gtk.Label)
+
+	objMain, _ = b.GetObject("tag_label")
+	tagLabel := objMain.(*gtk.Label)
 
 	objMain, _ = b.GetObject("user_label")
 	userLabel := objMain.(*gtk.Label)
@@ -208,6 +222,12 @@ func main() {
 	objMain, _ = b.GetObject("joinGroupBtnConfirm")
 	joinGroupBtnConfirm := objMain.(*gtk.Button)
 
+	objWarningWin, _ = b.GetObject("warningWinBtn")
+	warningWinBtn := objWarningWin.(*gtk.Button)
+
+	objMain, _ = b.GetObject("btn_del_msg")
+	btnDelMsg := objMain.(*gtk.Button)
+
 	winNewGroup.Connect("delete-event", func() {
 		entryNewGroupId.SetText("")
 		entryNewGroupName.SetText("")
@@ -242,6 +262,13 @@ func main() {
 	msgListbox.Connect("row-activated", func() {
 
 		tempRow := msgListbox.GetSelectedRow()
+		tempName, _ := tempRow.GetName()
+		if tempName == "system" {
+			msgListbox.UnselectAll()
+			selectedRowMsg, _ = gtk.ListBoxRowNew()
+			selectedRowMsg = nil
+			return
+		}
 		fmt.Println("tempRow.GetIndex() msg:", tempRow.GetIndex())
 		fmt.Println("selectedRow.GetIndex()) msg:", selectedRowMsg.GetIndex())
 
@@ -250,6 +277,7 @@ func main() {
 		if tempRow.GetIndex() == selectedRowMsg.GetIndex() {
 			msgListbox.UnselectAll()
 			selectedRowMsg, _ = gtk.ListBoxRowNew()
+			selectedRowMsg = nil
 		} else {
 			selectedRowMsg = msgListbox.GetSelectedRow()
 		}
@@ -260,12 +288,20 @@ func main() {
 	})
 
 	btnChangeMsg.Connect("clicked", func() {
-		msgId, _ := selectedRowMsg.GetName()
-		info, _ := conn.Call("fn.get_selected_msg", []interface{}{msgId})
-		msgTuples := info.Tuples()
-		newMsgText := msgTuples[2][0].(string)
-		changeMsgEntry.SetText(newMsgText)
-		winChangeMsg.Run()
+		if selectedRowMsg != nil {
+			msgId, _ := selectedRowMsg.GetName()
+			info, _ := conn.Call("fn.get_selected_msg", []interface{}{msgId})
+			msgTuples := info.Tuples()
+			msgUser := msgTuples[0][0].(string)
+			newMsgText := msgTuples[2][0].(string)
+			if msgUser == MyUser {
+				changeMsgEntry.SetText(newMsgText)
+				winChangeMsg.Run()
+			} else {
+				warningWin.Run()
+				fmt.Println("Вы можете изменять только свои сообщения!")
+			}
+		}
 	})
 
 	changeBtnMsgConfirm.Connect("clicked", func() {
@@ -292,6 +328,7 @@ func main() {
 		_, _ = conn.Call("fn.edit_group", []interface{}{MyUser, SelectedGroupId, newGroup})
 		GetGroups(conn, groupsListbox)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
+		selectedRowGroup = nil
 		SelectedGroupName = newGroup
 		clearListbox(msgListbox)
 		messagesArr = messagesArr[:0]
@@ -300,6 +337,7 @@ func main() {
 	})
 
 	groupsListbox.Connect("row-activated", func() {
+		fmt.Println(selectedRowGroup)
 		fmt.Println("Выбрана группа")
 		AutoScroll(scrolledWindow)
 		tempRow := groupsListbox.GetSelectedRow()
@@ -307,12 +345,18 @@ func main() {
 		fmt.Println("selectedRow.GetIndex()) group:", selectedRowGroup.GetIndex())
 		if tempRow.GetIndex() == selectedRowGroup.GetIndex() {
 			groupsListbox.UnselectAll()
+			guildLabel.SetText("")
+			tagLabel.SetText("")
 			clearListbox(msgListbox)
 			selectedRowGroup, _ = gtk.ListBoxRowNew()
+			selectedRowGroup = nil
 			selectedRowMsg, _ = gtk.ListBoxRowNew()
+			selectedRowMsg = nil
 			fmt.Println("Индекс сообщения", selectedRowMsg.GetIndex())
+			fmt.Println("sel gr после обнуления", selectedRowGroup)
 		} else {
 			selectedRowMsg, _ = gtk.ListBoxRowNew() ///////////
+			selectedRowMsg = nil
 			selectedRowGroup = groupsListbox.GetSelectedRow()
 			selectedRowGroupId, _ := selectedRowGroup.GetName()
 			fmt.Println("group id ", selectedRowGroupId)
@@ -323,6 +367,7 @@ func main() {
 			SelectedGroupName = textLabel
 			SelectedGroupId = selectedRowGroupId
 			guildLabel.SetText(SelectedGroupName)
+			tagLabel.SetText("@" + selectedRowGroupId)
 			messagesArr = messagesArr[:0]
 			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
@@ -351,13 +396,16 @@ func main() {
 		clearListbox(groupsListbox)
 		clearListbox(msgListbox)
 		selectedRowGroup, _ = gtk.ListBoxRowNew()
+		selectedRowGroup = nil
 		selectedRowMsg, _ = gtk.ListBoxRowNew()
+		selectedRowMsg = nil
 		userLabel.SetText("")
 		guildLabel.SetText("")
+		tagLabel.SetText("")
 		messagesArr = messagesArr[:0]
 		fmt.Println("Выход")
-		winMain.Hide()
 		winReg.ShowAll()
+		winMain.Hide()
 	})
 
 	newGroupBtn.Connect("clicked", func() {
@@ -418,13 +466,20 @@ func main() {
 	})
 
 	delGroupBtn.Connect("clicked", func() {
-		_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupId})
-		groupsListbox.Remove(selectedRowGroup)
-		selectedRowGroup, _ = gtk.ListBoxRowNew()
-		clearListbox(msgListbox)
-		guildLabel.SetText("")
-		messagesArr = messagesArr[:0]
-		msgEntry.SetText("")
+		if selectedRowGroup != nil {
+			message := fmt.Sprintf("Пользователь %s вышел из группы", MyUser)
+			_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
+			_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupId})
+			groupsListbox.Remove(selectedRowGroup)
+			selectedRowGroup, _ = gtk.ListBoxRowNew()
+			selectedRowGroup = nil
+			clearListbox(msgListbox)
+
+			guildLabel.SetText("")
+			tagLabel.SetText("")
+			messagesArr = messagesArr[:0]
+			msgEntry.SetText("")
+		}
 	})
 
 	changeGroupBtn.Connect("clicked", func() {
@@ -460,8 +515,8 @@ func main() {
 				loginRegEntry.SetText("")
 				passRegEntry.SetText("")
 				registrationSuccessLabel.SetText("\n")
-				winReg.Hide()
 				winMain.ShowAll()
+				winReg.Hide()
 
 			} else {
 				errText := "Ошибка! \n Неверный логин или пароль!"
@@ -483,36 +538,59 @@ func main() {
 		winJoinGroup.Run()
 	})
 
+	warningWinBtn.Connect("clicked", func() {
+		warningWin.Hide()
+	})
+
+	btnDelMsg.Connect("clicked", func() {
+		if selectedRowMsg != nil {
+			msgId, _ := selectedRowMsg.GetName()
+			_, _ = conn.Call("fn.del_msg", []interface{}{msgId})
+			msgListbox.Remove(selectedRowMsg)
+			selectedRowMsg, _ = gtk.ListBoxRowNew()
+			selectedRowMsg = nil
+		}
+	})
+
 	joinGroupBtnConfirm.Connect("clicked", func() {
 		groupId, _ := joinGroupEntry.GetText()
 		info, _ := conn.Call("fn.join_group", []interface{}{MyUser, groupId})
 		fmt.Println(info)
 		tuples := info.Tuples()
-		joinGroupName := tuples[0][0].(string)
+		fmt.Println(tuples[0][0])
+		if tuples[0][0].(string) != "false" {
+			joinGroupName := tuples[0][0].(string)
 
-		rowGroup, _ := gtk.ListBoxRowNew()
-		rowGroup.SetName(groupId)
-		labelGroup, _ := gtk.LabelNew(joinGroupName)
-		labelGroup.SetSizeRequest(-1, 50)
-		markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", joinGroupName)
-		labelGroup.SetMarkup(markup)
-		rowGroup.Add(labelGroup)
-		groupsListbox.Insert(rowGroup, 0)
+			rowGroup, _ := gtk.ListBoxRowNew()
+			rowGroup.SetName(groupId)
+			labelGroup, _ := gtk.LabelNew(joinGroupName)
+			labelGroup.SetSizeRequest(-1, 50)
+			markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", joinGroupName)
+			labelGroup.SetMarkup(markup)
+			rowGroup.Add(labelGroup)
+			groupsListbox.Insert(rowGroup, 0)
 
-		joinGroupEntry.SetText("")
-		winJoinGroup.Hide()
-		winMain.ShowAll()
+			// rowJoinUser, _ := gtk.ListBoxRowNew()
+			// rowJoinUser.SetName("notMsg")
+			// labelJoinUser, _ := gtk.LabelNew(message)
+			// rowJoinUser.Add(labelJoinUser)
+			// msgListbox.Insert(rowJoinUser, 0)
+			message := fmt.Sprintf("Пользователь %s вступил в группу", MyUser)
+			_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
+
+			joinGroupEntry.SetText("")
+			winJoinGroup.Hide()
+			winMain.ShowAll()
+		}
 	})
 
 	msgBtn.Connect("button-press-event", func(btn *gtk.Button, event *gdk.Event) {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
 		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS || buttonEvent.Type() == gdk.EVENT_3BUTTON_PRESS {
 			newMsg, _ := msgEntry.GetText()
-			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupName, MyUser})
+			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupId, MyUser})
 			GetMsg(conn, msgListbox)
 			AutoScroll(scrolledWindow)
-			clearListbox(msgListbox)
-			GetMsg(conn, msgListbox)
 			msgListbox.ShowAll()
 			winMain.ShowAll()
 			fmt.Println("Double click")
@@ -572,6 +650,17 @@ func main() {
 	//})
 
 	// Отображаем все виджеты в окне
+
+	// provider, _ := gtk.CssProviderNew()
+	// provider.LoadFromData(`
+	// 	window {
+	// 		background-color: rgba(255, 255, 255, 0.5); /* Белый цвет фона с прозрачностью 50% */
+	// 	}
+	// `)
+
+	// context, _ := winReg.GetStyleContext()
+	// context.AddProvider(provider, uint(gtk.STYLE_PROVIDER_PRIORITY_APPLICATION))
+
 	winReg.ShowAll()
 
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
@@ -684,18 +773,26 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 			msgTime := newMessages[i].msgTime
 			msgId := newMessages[i].msgId
 
-			newMsg := msgUser + "(" + SelectedGroupName + "): " + msgText
+			newMsg := ""
 
+			if msgUser == "system" {
+				newMsg = msgText
+			} else {
+				newMsg = msgUser + "(" + SelectedGroupName + "): " + msgText
+			}
 			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
-
 			//listbox
-
 			rowMsg, _ := gtk.ListBoxRowNew()
 			labelMsg, _ := gtk.LabelNew(newMsg)
 			labelMsg.SetHAlign(gtk.ALIGN_START)
 			labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
 			rowMsg.Add(labelMsg)
 			rowMsg.SetName(msgId)
+			if msgUser == "system" {
+				markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 10' color='#323ea8'>%s</span>", msgText)
+				labelMsg.SetMarkup(markup)
+				rowMsg.SetName("system")
+			}
 			//msgListBox.Insert(rowMsg, 1)
 			msgListBox.Prepend(rowMsg)
 
