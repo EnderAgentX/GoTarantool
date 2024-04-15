@@ -22,6 +22,14 @@ var userId string
 var selectedRowMsg *gtk.ListBoxRow
 var selectedRowGroup *gtk.ListBoxRow
 var selectedRowUsers *gtk.ListBoxRow
+var selectedRowGroupId string
+var stopChan = make(chan struct{})
+
+type Timer struct {
+	ticker   *time.Ticker
+	stopChan chan bool
+	active   bool
+}
 
 type TimedMsg struct {
 	msg  string
@@ -38,7 +46,9 @@ type MessageStruct struct {
 var messagesArr = make([]TimedMsg, 0)
 
 func main() {
-	t := time.NewTimer(1 * time.Second)
+	timer := NewTimer()
+	//t := time.NewTimer(1 * time.Second)
+	//done := make(chan bool)
 	//isLogin := false
 	conn := Server.Server()
 	defer conn.Close()
@@ -268,95 +278,15 @@ func main() {
 	//testEntry := objUsersWin.(*gtk.Entry)
 
 	usersWin.Connect("delete-event", func() {
+		usersListbox.UnselectAll()
 		selectedRowUsers, _ = gtk.ListBoxRowNew()
 		selectedRowUsers = nil
-
-		fmt.Println(selectedRowGroup.GetName())
-		fmt.Println(MyUser)
-		fmt.Println(MyRole)
-
+		clearListbox(usersListbox)
 		usersWin.Hide()
-
-		selectedRowMsg, _ = gtk.ListBoxRowNew() ///////////
-		selectedRowMsg = nil
-		selectedRowGroup = groupsListbox.GetSelectedRow()
-		selectedRowGroupId, _ := selectedRowGroup.GetName()
-		fmt.Println("group id ", selectedRowGroupId)
-
-		labelRow, _ := selectedRowGroup.GetChild()
-		groupLabel := labelRow.(*gtk.Label)
-		textLabel, _ := groupLabel.GetText()
-		SelectedGroupName = textLabel
-		SelectedGroupId = selectedRowGroupId
-		guildLabel.SetText(SelectedGroupName)
-		tagLabel.SetText("@" + selectedRowGroupId)
-		messagesArr = messagesArr[:0]
-		GetMsg(conn, msgListbox)
-		AutoScroll(scrolledWindow)
-
-		info, _ := conn.Call("fn.group_users_cnt", []interface{}{SelectedGroupId})
-		usersCntTuples := info.Tuples()
-		usersCnt := usersCntTuples[0][0].(string)
-		usersBtn.SetLabel("Участники: " + usersCnt)
-
-		info, _ = conn.Call("fn.get_user_role", []interface{}{MyUser, SelectedGroupId})
-		userRoleTuples := info.Tuples()
-		MyRole = userRoleTuples[0][0].(string)
-
-		//Показываем элементы группы
-		btnDelMsg.Show()
-		btnChangeMsg.Show()
-		usersBtn.Show()
-		statisticsBtn.Show()
-		changeGroupBtn.Show()
-		delGroupBtn.Show()
-		msgBtn.Show()
-		msgEntry.Show()
-		guildLabel.Show()
-		guildTextLabel.Show()
-		tagLabel.Show()
-		tagTextLabel.Show()
-
-		winMain.ShowAll()
-
-		//Таймер потом включить
-		// go func() {
-		// 	for {
-		// 		t.Reset(2 * time.Second)
-		// 		fmt.Println("Показываем в таймере")
-		// 		info, _ = conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
-		// 		fmt.Println("Проверка")
-		// 		groupExistsTuples := info.Tuples()
-		// 		fmt.Println("туплес")
-		// 		groupExists := groupExistsTuples[0][0].(bool)
-		// 		if groupExists == false {
-		// 			fmt.Println("НЕ СУЩЕСТВУЕТ")
-		// 			t.Stop()
-		// 			// groupsListbox.UnselectAll()
-		// 			// msgListbox.UnselectAll()
-		// 			// clearListbox(groupsListbox)
-		// 			// clearListbox(msgListbox)
-		// 			// selectedRowGroup, _ = gtk.ListBoxRowNew()
-		// 			// selectedRowGroup = nil
-		// 			// selectedRowMsg, _ = gtk.ListBoxRowNew()
-		// 			// selectedRowMsg = nil
-		// 			// userLabel.SetText("")
-		// 			// guildLabel.SetText("")
-		// 			// tagLabel.SetText("")
-		// 			// MyUser = ""
-		// 			// myPass = ""
-		// 			// MyRole = ""
-		// 			// messagesArr = messagesArr[:0]
-		// 			// fmt.Println("Отключен")
-		// 			break
-		// 		}
-		// 		if groupExists == true {
-		// 			GetMsg(conn, msgListbox)
-		// 		}
-		// 		<-t.C
-		// 	}
-
-		// }()
+		//time.Sleep(3 * time.Second)
+		timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+			statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+			)
 
 	})
 
@@ -484,6 +414,19 @@ func main() {
 		messagesArr = messagesArr[:0]
 		msgEntry.SetText("")
 		winChangeGroup.Hide()
+		//Скрываем элементы группы
+		btnDelMsg.Hide()
+		btnChangeMsg.Hide()
+		usersBtn.Hide()
+		statisticsBtn.Hide()
+		changeGroupBtn.Hide()
+		delGroupBtn.Hide()
+		msgBtn.Hide()
+		msgEntry.Hide()
+		guildLabel.Hide()
+		guildTextLabel.Hide()
+		tagLabel.Hide()
+		tagTextLabel.Hide()
 	})
 
 	usersListbox.Connect("row-activated", func() {
@@ -513,7 +456,9 @@ func main() {
 		fmt.Println("tempRow.GetIndex() group:", tempRow.GetIndex())
 		fmt.Println("selectedRow.GetIndex()) group:", selectedRowGroup.GetIndex())
 		if tempRow.GetIndex() == selectedRowGroup.GetIndex() {
-			t.Stop()
+			timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+				statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+				)
 			groupsListbox.UnselectAll()
 			guildLabel.SetText("")
 			tagLabel.SetText("")
@@ -542,10 +487,11 @@ func main() {
 			tagTextLabel.Hide()
 
 		} else {
+
 			selectedRowMsg, _ = gtk.ListBoxRowNew() ///////////
 			selectedRowMsg = nil
 			selectedRowGroup = groupsListbox.GetSelectedRow()
-			selectedRowGroupId, _ := selectedRowGroup.GetName()
+			selectedRowGroupId, _ = selectedRowGroup.GetName()
 			fmt.Println("group id ", selectedRowGroupId)
 
 			labelRow, _ := selectedRowGroup.GetChild()
@@ -583,126 +529,19 @@ func main() {
 			tagTextLabel.Show()
 
 			winMain.ShowAll()
+			timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+				statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+				)
 
-			//Таймер потом включить
-			// go func() {
-			// 	for {
-			// 		t.Reset(2 * time.Second)
-			// 		GetMsg(conn, msgListbox)
-			// 		fmt.Println("Показываем в таймере")
-			// 		info, _ = conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
-			// 		fmt.Println("Проверка")
-			// 		groupExistsTuples := info.Tuples()
-			// 		fmt.Println("туплес")
-			// 		groupExists := groupExistsTuples[0][0].(bool)
-			// 		if groupExists == false {
-			// 			t.Stop()
-			// 			// // fmt.Println("Не существует")
-			// 			// // groupsListbox.UnselectAll()
-			// 			// // msgListbox.UnselectAll()
-			// 			// clearListbox(groupsListbox)
-			// 			// GetGroups(conn, groupsListbox)
-			// 			// clearListbox(msgListbox)
-			// 			// selectedRowGroup, _ = gtk.ListBoxRowNew()
-			// 			// selectedRowGroup = nil
-			// 			// selectedRowMsg, _ = gtk.ListBoxRowNew()
-			// 			// selectedRowMsg = nil
-			// 			// userLabel.SetText("")
-			// 			// guildLabel.SetText("")
-			// 			// tagLabel.SetText("")
-			// 			// // MyUser = ""
-			// 			// // myPass = ""
-			// 			// // MyRole = ""
-			// 			// messagesArr = messagesArr[:0]
-			// 			// break
-
-			// 			groupsListbox.UnselectAll()
-			// 			msgListbox.UnselectAll()
-			// 			clearListbox(groupsListbox)
-			// 			clearListbox(msgListbox)
-			// 			selectedRowGroup, _ = gtk.ListBoxRowNew()
-			// 			selectedRowGroup = nil
-			// 			selectedRowMsg, _ = gtk.ListBoxRowNew()
-			// 			selectedRowMsg = nil
-			// 			userLabel.SetText("")
-			// 			guildLabel.SetText("")
-			// 			tagLabel.SetText("")
-			// 			MyUser = ""
-			// 			myPass = ""
-			// 			MyRole = ""
-			// 			messagesArr = messagesArr[:0]
-			// 			fmt.Println("Выход")
-			// 			winReg.ShowAll()
-			// 			winMain.Hide()
-			// 		}
-			// 		<-t.C
-			// 	}
-
-			// }()
-
-
-
-			go func() {
-				for {
-					t.Reset(2 * time.Second)
-					GetMsg(conn, msgListbox)
-					fmt.Println("Показываем в таймере")
-					info, _ = conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
-					fmt.Println("Проверка")
-					groupExistsTuples := info.Tuples()
-					fmt.Println("туплес")
-					groupExists := groupExistsTuples[0][0].(bool)
-					if groupExists == false {
-						t.Stop()
-						// // fmt.Println("Не существует")
-						// // groupsListbox.UnselectAll()
-						// // msgListbox.UnselectAll()
-						// clearListbox(groupsListbox)
-						// GetGroups(conn, groupsListbox)
-						// clearListbox(msgListbox)
-						// selectedRowGroup, _ = gtk.ListBoxRowNew()
-						// selectedRowGroup = nil
-						// selectedRowMsg, _ = gtk.ListBoxRowNew()
-						// selectedRowMsg = nil
-						// userLabel.SetText("")
-						// guildLabel.SetText("")
-						// tagLabel.SetText("")
-						// // MyUser = ""
-						// // myPass = ""
-						// // MyRole = ""
-						// messagesArr = messagesArr[:0]
-						// break
-
-						groupsListbox.UnselectAll()
-						msgListbox.UnselectAll()
-						clearListbox(groupsListbox)
-						clearListbox(msgListbox)
-						selectedRowGroup, _ = gtk.ListBoxRowNew()
-						selectedRowGroup = nil
-						selectedRowMsg, _ = gtk.ListBoxRowNew()
-						selectedRowMsg = nil
-						userLabel.SetText("")
-						guildLabel.SetText("")
-						tagLabel.SetText("")
-						MyUser = ""
-						myPass = ""
-						MyRole = ""
-						messagesArr = messagesArr[:0]
-						fmt.Println("Выход")
-						winReg.ShowAll()
-						winMain.Hide()
-					}
-					<-t.C
-				}
-
-			}()
 		}
+		 	
 
 	})
 
 	// Сигнал по нажатию на кнопку
 
 	exitBtn.Connect("clicked", func() {
+		timer.Stop()
 		groupsListbox.UnselectAll()
 		msgListbox.UnselectAll()
 		clearListbox(groupsListbox)
@@ -785,11 +624,11 @@ func main() {
 			message := fmt.Sprintf("Пользователь %s вышел из группы", MyUser)
 			_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
 			_, _ = conn.Call("fn.del_group", []interface{}{MyUser, SelectedGroupId})
-			groupsListbox.Remove(selectedRowGroup)
 			selectedRowGroup, _ = gtk.ListBoxRowNew()
 			selectedRowGroup = nil
 			selectedRowMsg, _ = gtk.ListBoxRowNew()
 			selectedRowMsg = nil
+			GetGroups(conn, groupsListbox)
 			clearListbox(msgListbox)
 
 			guildLabel.SetText("")
@@ -850,6 +689,10 @@ func main() {
 				tagLabel.Hide()
 				tagTextLabel.Hide()
 
+				timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+					statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+					)
+
 			} else {
 				errText := "Ошибка! \n Неверный логин или пароль!"
 				markup := fmt.Sprintf("<span size='15000' foreground='red'>%s</span>", errText)
@@ -877,7 +720,7 @@ func main() {
 				usersListbox.Remove(selectedRowUsers)
 				selectedRowUsers, _ = gtk.ListBoxRowNew()
 				selectedRowUsers = nil
-				GetMsg(conn, msgListbox)
+				//GetMsg(conn, msgListbox)
 				clearListbox(usersListbox)
 				GetUsers(conn, usersListbox)
 
@@ -948,7 +791,6 @@ func main() {
 	})
 
 	usersBtn.Connect("clicked", func() {
-		clearListbox(usersListbox)
 		res := GetUsers(conn, usersListbox)
 		if res {
 			if MyRole == "admin" {
@@ -960,7 +802,7 @@ func main() {
 				promoteBtn.Hide()
 				downgradeBtn.Hide()
 			}
-			t.Stop()
+			timer.Stop()
 			usersWin.Run()
 		}
 
@@ -1031,8 +873,8 @@ func main() {
 			labelGroup.SetSizeRequest(-1, 50)
 			markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 20'>%s</span>", joinGroupName)
 			labelGroup.SetMarkup(markup)
-			rowGroup.Add(labelGroup)
-			groupsListbox.Insert(rowGroup, 0)
+			//rowGroup.Add(labelGroup)
+			//groupsListbox.Insert(rowGroup, 0)
 
 			// rowJoinUser, _ := gtk.ListBoxRowNew()
 			// rowJoinUser.SetName("notMsg")
@@ -1153,7 +995,7 @@ func AutoScroll(scrolledWindow *gtk.ScrolledWindow) {
 // }
 
 func clearListbox(ListBox *gtk.ListBox) {
-	messagesArr = messagesArr[:0] //TODO ПЕРЕНЕСТИ ИЗ ФУНКЦИИ
+	//messagesArr = messagesArr[:0] //TODO ПЕРЕНЕСТИ ИЗ ФУНКЦИИ
 
 	children := ListBox.GetChildren()
 
@@ -1236,6 +1078,102 @@ func GetUsers(conn *tarantool.Connection, usersListbox *gtk.ListBox) bool {
 	}
 }
 
+func NewTimer() *Timer {
+	return &Timer{
+		stopChan: make(chan bool),
+	}
+}
+
+func (t *Timer) Start(
+	conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox, timer *Timer,
+	userLabel *gtk.Label, guildLabel *gtk.Label, tagLabel *gtk.Label, btnDelMsg *gtk.Button,
+	btnChangeMsg *gtk.Button, usersBtn *gtk.Button, statisticsBtn *gtk.Button, changeGroupBtn *gtk.Button,
+	delGroupBtn *gtk.Button, msgBtn *gtk.Button, msgEntry *gtk.Entry, guildTextLabel *gtk.Label, tagTextLabel *gtk.Label,
+	) {
+	if t.active {
+		fmt.Println(" is already running!")
+		return
+	}
+
+	t.active = true
+	t.ticker = time.NewTicker(3 * time.Second)
+
+	go func() {
+		for {
+			select {
+			case <-t.ticker.C:
+				if selectedRowGroup != nil {
+					info, _ := conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
+					groupExistsTuples := info.Tuples()
+					groupExists := groupExistsTuples[0][0].(bool)
+					if !groupExists {
+						groupsListbox.UnselectAll()
+						guildLabel.SetText("")
+						tagLabel.SetText("")
+						selectedRowGroup, _ = gtk.ListBoxRowNew()
+						selectedRowGroup = nil
+						selectedRowMsg, _ = gtk.ListBoxRowNew()
+						selectedRowMsg = nil
+						MyRole = ""
+						fmt.Println("Индекс сообщения", selectedRowMsg.GetIndex())
+						fmt.Println("sel gr после обнуления", selectedRowGroup)
+						usersBtn.SetLabel("Участники: 0")
+
+						//Скрываем элементы группы
+						btnDelMsg.Hide()
+						btnChangeMsg.Hide()
+						usersBtn.Hide()
+						statisticsBtn.Hide()
+						changeGroupBtn.Hide()
+						delGroupBtn.Hide()
+						msgBtn.Hide()
+						msgEntry.Hide()
+						guildLabel.Hide()
+						guildTextLabel.Hide()
+						tagLabel.Hide()
+						tagTextLabel.Hide()
+						GetGroups(conn, groupsListbox)
+						clearListbox(msgListbox)
+						//t.Stop()
+					}
+					GetMsg(conn, msgListbox)
+					fmt.Println("Tick at", time.Now().Format("15:04:05"))
+				} else {
+					GetGroups(conn, groupsListbox)
+				}
+
+			case <-t.stopChan:
+				return
+			}
+		}
+	}()
+	fmt.Println("Timer started")
+}
+
+func (t *Timer) Stop() {
+	if !t.active {
+		fmt.Println("Timer is not running!")
+		return
+	}
+
+	t.stopChan <- true
+	t.ticker.Stop()
+	t.active = false
+	fmt.Println("Timer stopped")
+}
+
+func (t *Timer) Restart(
+	conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox, timer *Timer,
+	userLabel *gtk.Label, guildLabel *gtk.Label, tagLabel *gtk.Label, btnDelMsg *gtk.Button,
+	btnChangeMsg *gtk.Button, usersBtn *gtk.Button, statisticsBtn *gtk.Button, changeGroupBtn *gtk.Button,
+	delGroupBtn *gtk.Button, msgBtn *gtk.Button, msgEntry *gtk.Entry, guildTextLabel *gtk.Label, tagTextLabel *gtk.Label,
+	) {
+	t.Stop()
+	t.Start(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+	statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+	)
+}
+
 func getTextBeforeSubstring(input string, substring string) string {
 	index := strings.Index(input, substring)
 	if index != -1 {
@@ -1246,83 +1184,88 @@ func getTextBeforeSubstring(input string, substring string) string {
 }
 
 func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
-	var lastTimedMsg uint64
+	if selectedRowGroup != nil {
+		fmt.Println("Загрузка сообщений")
+		var lastTimedMsg uint64
 
-	fmt.Println("Начало")
+		//fmt.Println("Начало")
 
-	fmt.Println("len(messagesArr) ", len(messagesArr))
-	if len(messagesArr) == 0 {
-		clearListbox(msgListBox)
-		lastTimedMsg = 0 // В самом начале загружаем все сообщения
-	} else {
-		lastTimedMsg = messagesArr[len(messagesArr)-1].time
-	}
-
-	infoTimedMsg, err := conn.Call("fn.time_group_msg", []interface{}{SelectedGroupId, lastTimedMsg})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Получаем смс")
-
-	newMessagesCntTuples := infoTimedMsg.Tuples()
-	cntMsg := int(newMessagesCntTuples[0][0].(uint64))
-	fmt.Println("lastTimedMsg", lastTimedMsg)
-	//fmt.Println(newMessagesCntTuples)
-
-	var newMessages []MessageStruct
-	for i := 0; i < cntMsg; i++ {
-		newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
-		newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64), newMessagesTuples[3].(string)})
-	}
-
-	fmt.Println("Заполняем массив")
-
-	if cntMsg != 0 {
-		for i := 0; i < cntMsg; i++ {
-
-			msgText := newMessages[i].message
-			msgUser := newMessages[i].user
-			msgTime := newMessages[i].msgTime
-			msgId := newMessages[i].msgId
-
-			newMsg := ""
-
-			if msgUser == "system" {
-				newMsg = msgText
-			} else {
-				newMsg = msgUser + "(" + SelectedGroupName + "): " + msgText
-			}
-			messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
-			//listbox
-
-			fmt.Println(newMsg)
-			rowMsg, err := gtk.ListBoxRowNew()
-			if err != nil {
-				panic(err)
-			}
-			labelMsg, err := gtk.LabelNew(newMsg)
-			if err != nil {
-				panic(err)
-			}
-			labelMsg.SetHAlign(gtk.ALIGN_START)
-			labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
-			rowMsg.Add(labelMsg)
-			rowMsg.SetName(msgId)
-			if msgUser == "system" {
-				markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 10' color='#323ea8'>%s</span>", msgText)
-				labelMsg.SetMarkup(markup)
-				rowMsg.SetName("system")
-			}
-			//msgListBox.Insert(rowMsg, 1)
-			msgListBox.Prepend(rowMsg)
-			fmt.Println("Добавляем")
-			//msgListBox.ShowAll()
-			//rowMsg.ShowAll()
-			fmt.Println("Показываем всё")
-
+		fmt.Println("len(messagesArr) ", len(messagesArr))
+		if len(messagesArr) == 0 {
+			clearListbox(msgListBox)
+			lastTimedMsg = 0 // В самом начале загружаем все сообщения
+		} else {
+			lastTimedMsg = messagesArr[len(messagesArr)-1].time
 		}
 
-		msgListBox.ShowAll()
+		infoTimedMsg, err := conn.Call("fn.time_group_msg", []interface{}{SelectedGroupId, lastTimedMsg})
+		if err != nil {
+			panic(err)
+		}
+		//fmt.Println("Получаем смс")
 
+		newMessagesCntTuples := infoTimedMsg.Tuples()
+		cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+		//fmt.Println("lastTimedMsg", lastTimedMsg)
+		//fmt.Println(newMessagesCntTuples)
+		fmt.Println("cntMsg", cntMsg)
+
+		
+		var newMessages []MessageStruct
+		for i := 0; i < cntMsg; i++ {
+			newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
+			newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64), newMessagesTuples[3].(string)})
+		}
+
+		//fmt.Println("Заполняем массив")
+
+		if cntMsg != 0 {
+			for i := 0; i < cntMsg; i++ {
+
+				msgText := newMessages[i].message
+				msgUser := newMessages[i].user
+				msgTime := newMessages[i].msgTime
+				msgId := newMessages[i].msgId
+
+				newMsg := ""
+
+				if msgUser == "system" {
+					newMsg = msgText
+				} else {
+					newMsg = msgUser + "(" + SelectedGroupName + "): " + msgText
+				}
+				messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
+				//listbox
+
+				//fmt.Println(newMsg)
+				rowMsg, err := gtk.ListBoxRowNew()
+				if err != nil {
+					panic(err)
+				}
+				labelMsg, err := gtk.LabelNew(newMsg)
+				if err != nil {
+					panic(err)
+				}
+				labelMsg.SetHAlign(gtk.ALIGN_START)
+				labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
+				rowMsg.Add(labelMsg)
+				rowMsg.SetName(msgId)
+				if msgUser == "system" {
+					markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 10' color='#323ea8'>%s</span>", msgText)
+					labelMsg.SetMarkup(markup)
+					rowMsg.SetName("system")
+				}
+				//msgListBox.Insert(rowMsg, 1)
+				msgListBox.Prepend(rowMsg)
+				//fmt.Println("Добавляем")
+				//msgListBox.ShowAll()
+				//rowMsg.ShowAll()
+				//fmt.Println("Показываем всё")
+
+			}
+
+			msgListBox.ShowAll()
+
+		}
 	}
 }
