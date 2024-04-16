@@ -836,6 +836,7 @@ func main() {
 			} else if MyRole != "admin" {
 				fmt.Println("Недостаточно прав")
 			} else if MyRole == "admin" {
+				fmt.Println("")
 				message := fmt.Sprintf("Пользователь %s исключён из группы", userName)
 				_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
 				_, _ = conn.Call("fn.del_group", []interface{}{userName, SelectedGroupId})
@@ -1300,7 +1301,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 
 			}
 
-			msgListBox.ShowAll()
+			//msgListBox.ShowAll()
 
 		}
 	}
