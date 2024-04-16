@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/tarantool/go-tarantool"
 )
@@ -24,6 +25,7 @@ var selectedRowGroup *gtk.ListBoxRow
 var selectedRowUsers *gtk.ListBoxRow
 var selectedRowGroupId string
 var stopChan = make(chan struct{})
+var msgChan = make(chan []MessageStruct)
 
 type Timer struct {
 	ticker   *time.Ticker
@@ -284,9 +286,9 @@ func main() {
 		clearListbox(usersListbox)
 		usersWin.Hide()
 		//time.Sleep(3 * time.Second)
-		timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
-			statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
-		)
+		// timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+		// 	statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+		// )
 
 	})
 
@@ -456,9 +458,10 @@ func main() {
 		fmt.Println("tempRow.GetIndex() group:", tempRow.GetIndex())
 		fmt.Println("selectedRow.GetIndex()) group:", selectedRowGroup.GetIndex())
 		if tempRow.GetIndex() == selectedRowGroup.GetIndex() {
-			timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
-				statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
-			)
+			// timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+			// 	statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+			// )
+			stopTimer()
 			groupsListbox.UnselectAll()
 			guildLabel.SetText("")
 			tagLabel.SetText("")
@@ -529,9 +532,10 @@ func main() {
 			tagTextLabel.Show()
 
 			winMain.ShowAll()
-			timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
-				statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
-			)
+			startTimer(msgListbox)
+			// timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+			// 	statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+			// )
 
 		}
 
@@ -701,10 +705,11 @@ func main() {
 				guildTextLabel.Hide()
 				tagLabel.Hide()
 				tagTextLabel.Hide()
+				startTimer(msgListbox)
 
-				timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
-					statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
-				)
+				// timer.Restart(conn, msgListbox, groupsListbox, timer, userLabel, guildLabel, tagLabel, btnDelMsg, btnChangeMsg, usersBtn,
+				// 	statisticsBtn, changeGroupBtn, delGroupBtn, msgBtn, msgEntry, guildTextLabel, tagTextLabel,
+				// )
 
 			} else {
 				errText := "Ошибка! \n Неверный логин или пароль!"
@@ -955,8 +960,13 @@ func main() {
 			newMsg, _ := msgEntry.GetText()
 			_, _ = conn.Call("fn.new_msg", []interface{}{newMsg, SelectedGroupId, MyUser})
 			GetMsg(conn, msgListbox)
+			GetMsgTimer(conn, msgListbox)
 			AutoScroll(scrolledWindow)
 			msgEntry.SetText("")
+			glib.IdleAdd(func() bool {
+				msgEntry.SetText("1") // Обработка и отображение данных в метке
+				return false
+			})
 		}
 	})
 
@@ -1001,7 +1011,13 @@ func main() {
 
 	// Выполняем главный цикл GTK (для отрисовки). Он остановится когда
 	// выполнится gtk.MainQuit()
+
 	gtk.Main()
+	func() {
+		newMessagesArr := <-msgChan
+		fmt.Println(newMessagesArr)
+		fmt.Println("Поймал")
+	}()
 
 }
 
@@ -1172,6 +1188,7 @@ func (t *Timer) Start(
 						//t.Stop()
 					}
 					GetMsg(conn, msgListbox)
+					GetMsgTimer(conn, msgListbox)
 					fmt.Println("Tick at", time.Now().Format("15:04:05"))
 				} else {
 					GetGroups(conn, groupsListbox)
@@ -1218,6 +1235,47 @@ func getTextBeforeSubstring(input string, substring string) string {
 	}
 }
 
+func GetMsgTimer(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
+	info, _ := conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
+	groupExistsTuples := info.Tuples()
+	groupExists := groupExistsTuples[0][0].(bool)
+	if selectedRowGroup != nil && groupExists {
+		fmt.Println("Загрузка сообщений")
+		var lastTimedMsg uint64
+
+		//fmt.Println("Начало")
+
+		fmt.Println("len(messagesArr) ", len(messagesArr))
+		if len(messagesArr) == 0 {
+			//clearListbox(msgListBox)
+			lastTimedMsg = 0 // В самом начале загружаем все сообщения
+		} else {
+			lastTimedMsg = messagesArr[len(messagesArr)-1].time
+		}
+
+		infoTimedMsg, err := conn.Call("fn.time_group_msg", []interface{}{SelectedGroupId, lastTimedMsg})
+		if err != nil {
+			panic(err)
+		}
+		//fmt.Println("Получаем смс")
+
+		newMessagesCntTuples := infoTimedMsg.Tuples()
+		cntMsg := int(newMessagesCntTuples[0][0].(uint64))
+		//fmt.Println("lastTimedMsg", lastTimedMsg)
+		//fmt.Println(newMessagesCntTuples)
+		fmt.Println("cntMsg", cntMsg)
+
+		var newMessages []MessageStruct
+		for i := 0; i < cntMsg; i++ {
+			newMessagesTuples := newMessagesCntTuples[1][i].([]interface{})
+			newMessages = append(newMessages, MessageStruct{newMessagesTuples[0].(string), newMessagesTuples[1].(string), newMessagesTuples[2].(uint64), newMessagesTuples[3].(string)})
+		}
+
+		msgChan <- newMessages
+
+	}
+}
+
 func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 	info, _ := conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
 	groupExistsTuples := info.Tuples()
@@ -1230,7 +1288,7 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 
 		fmt.Println("len(messagesArr) ", len(messagesArr))
 		if len(messagesArr) == 0 {
-			clearListbox(msgListBox)
+			//clearListbox(msgListBox)
 			lastTimedMsg = 0 // В самом начале загружаем все сообщения
 		} else {
 			lastTimedMsg = messagesArr[len(messagesArr)-1].time
@@ -1274,26 +1332,23 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 				messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 				//listbox
 
-				//fmt.Println(newMsg)
-				rowMsg, err := gtk.ListBoxRowNew()
-				if err != nil {
-					panic(err)
-				}
-				labelMsg, err := gtk.LabelNew(newMsg)
-				if err != nil {
-					panic(err)
-				}
+				fmt.Println(newMsg)
+				rowMsg, _ := gtk.ListBoxRowNew()
+
+				labelMsg, _ := gtk.LabelNew(newMsg)
+
 				labelMsg.SetHAlign(gtk.ALIGN_START)
 				labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
 				rowMsg.Add(labelMsg)
 				rowMsg.SetName(msgId)
+				fmt.Println(rowMsg.GetName())
 				if msgUser == "system" {
 					markup := fmt.Sprintf("<span font_desc='Serif Bold Italic 10' color='#323ea8'>%s</span>", msgText)
 					labelMsg.SetMarkup(markup)
 					rowMsg.SetName("system")
 				}
-				//msgListBox.Insert(rowMsg, 1)
-				msgListBox.Prepend(rowMsg)
+				msgListBox.Insert(rowMsg, 0)
+				//msgListBox.Prepend(rowMsg)
 				//fmt.Println("Добавляем")
 				//msgListBox.ShowAll()
 				//rowMsg.ShowAll()
@@ -1305,4 +1360,39 @@ func GetMsg(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 
 		}
 	}
+}
+
+var timerId glib.SourceHandle
+
+func startTimer(msgListBox *gtk.ListBox) {
+	if timerId > 0 {
+		fmt.Println("1")
+		glib.SourceRemove(timerId)
+	}
+	timerId = glib.TimeoutAdd(1000, func() bool {
+		fmt.Println("Tick at new timer", time.Now().Format("15:04:05"))
+		rowMsg, _ := gtk.ListBoxRowNew()
+
+		labelMsg, _ := gtk.LabelNew("Привет")
+
+		labelMsg.SetHAlign(gtk.ALIGN_START)
+		labelMsg.SetJustify(gtk.JUSTIFY_CENTER)
+		rowMsg.Add(labelMsg)
+		msgListBox.Prepend(rowMsg)
+		msgListBox.ShowAll()
+		// Здесь логика выполнения таймера
+		return true // продолжать выполнение
+	})
+}
+
+func stopTimer() {
+	if timerId > 0 {
+		glib.SourceRemove(timerId)
+		timerId = 0 // Обнуляем, если таймер остановлен
+	}
+}
+
+func restartTimer(msgListBox *gtk.ListBox) {
+	stopTimer()
+	startTimer(msgListBox)
 }
