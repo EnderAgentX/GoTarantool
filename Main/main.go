@@ -133,6 +133,11 @@ func main() {
 		log.Fatal("Ошибка:", err)
 	}
 
+	objStatisticsWin, err := b.GetObject("statisticsWin")
+	if err != nil {
+		log.Fatal("Ошибка:", err)
+	}
+
 	// Преобразуем из объекта именно окно типа gtk.Window
 	// и соединяем с сигналом "destroy" чтобы можно было закрыть
 	// приложение при закрытии окна
@@ -173,6 +178,12 @@ func main() {
 
 	})
 
+	statisticsWin := objStatisticsWin.(*gtk.Dialog)
+	statisticsWin.Connect("delete-event", func() {
+		statisticsWin.Hide()
+
+	})
+
 	usersWin := objUsersWin.(*gtk.Dialog)
 
 	objMain, _ = b.GetObject("msg_entry")
@@ -202,6 +213,12 @@ func main() {
 
 	objMain, _ = b.GetObject("registration_success_label")
 	registrationSuccessLabel := objMain.(*gtk.Label)
+
+	objStatisticsWin, _ = b.GetObject("statistics_label_msgCnt")
+	statLabelMsgCnt := objStatisticsWin.(*gtk.Label)
+
+	objStatisticsWin, _ = b.GetObject("statistics_label_maxUserMsg")
+	statLabelMaxUserMsg := objStatisticsWin.(*gtk.Label)
 
 	objMain, _ = b.GetObject("labelCheckId")
 	labelCheckId := objMain.(*gtk.Label)
@@ -409,6 +426,26 @@ func main() {
 		//widgetRow, _ := (selectedRowMsg.GetChild())
 		//labelRow := widgetRow.(*gtk.Label)
 		//fmt.Println(labelRow.GetText())
+	})
+
+	statisticsBtn.Connect("clicked", func() {
+		daysAgo := 30
+		info, _ := conn.Call("fn.get_msg_cnt", []interface{}{SelectedGroupId, daysAgo})
+		msgTuples := info.Tuples()
+		msgCnt := msgTuples[0][0].(string)
+
+		labelString := fmt.Sprintf("Всего сообщений за последние %d дней: %s", daysAgo, msgCnt)
+		statLabelMsgCnt.SetText(labelString)
+
+		info, _ = conn.Call("fn.get_max_user_sg", []interface{}{SelectedGroupId, daysAgo})
+		msgTuples = info.Tuples()
+		maxUser := msgTuples[0][0].(string)
+		maxCnt := msgTuples[1][0].(string)
+
+		labelString = fmt.Sprintf("Больше всех сообщений за последние %d дней написал: %s - %s", daysAgo, maxUser, maxCnt)
+		statLabelMaxUserMsg.SetText(labelString)
+
+		statisticsWin.Run()
 	})
 
 	btnChangeMsg.Connect("clicked", func() {
@@ -1360,7 +1397,11 @@ func GetMsg(p *GetMsgParams) {
 					if msgUser == "system" {
 						newMsg = msgText
 					} else {
-						newMsg = msgUser + "(" + SelectedGroupName + "): " + msgText
+						unixTime := int64(msgTime)
+						convertedTime := time.Unix(unixTime, 0)
+						hours := convertedTime.Hour()
+						minutes := convertedTime.Minute()
+						newMsg = fmt.Sprintf("%02d:%02d %s(%s): %s", hours, minutes, msgUser, SelectedGroupName, msgText)
 					}
 					messagesArr = append(messagesArr, TimedMsg{msg: newMsg, time: msgTime})
 					//listbox
