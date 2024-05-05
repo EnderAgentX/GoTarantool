@@ -1184,9 +1184,23 @@ func GetUsers(conn *tarantool.Connection, usersListbox *gtk.ListBox) bool {
 			labelUser, _ := gtk.LabelNew(userName)
 			markup := fmt.Sprintf("<span font_desc='Serif Bold 15'>%s</span>", userName)
 			labelUser.SetMarkup(markup)
+			labelUser.SetSizeRequest(300, -1) // Set the width of Label1
 			labelUser.SetHAlign(gtk.ALIGN_START)
-			labelUser.SetJustify(gtk.JUSTIFY_CENTER)
-			rowUser.Add(labelUser)
+			labelUser.SetJustify(gtk.JUSTIFY_LEFT)
+			labelUser.SetXAlign(0)
+
+			labelUser2, _ := gtk.LabelNew(userName)
+			labelUser2.SetMarkup(markup)
+			labelUser2.SetSizeRequest(300, -1)
+			labelUser2.SetHAlign(gtk.ALIGN_START)
+			labelUser2.SetJustify(gtk.JUSTIFY_LEFT)
+			labelUser2.SetXAlign(0)
+
+			box, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
+			box.PackStart(labelUser, false, false, 0)
+			box.PackStart(labelUser2, false, false, 0)
+
+			rowUser.Add(box)
 			rowUser.SetName(userRole)
 			usersListbox.Prepend(rowUser)
 
