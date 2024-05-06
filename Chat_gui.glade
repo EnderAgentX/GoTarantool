@@ -807,7 +807,8 @@
     </child>
   </object>
   <object class="GtkDialog" id="statisticsWin">
-    <property name="width-request">500</property>
+    <property name="width-request">1000</property>
+    <property name="height-request">400</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Статистика</property>
     <property name="window-position">center-on-parent</property>
@@ -824,7 +825,7 @@
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
-              <object class="GtkButton" id="warningWinBtn1">
+              <object class="GtkButton" id="btnCloseStatWin">
                 <property name="label" translatable="yes">Закрыть</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -851,7 +852,6 @@
             <property name="halign">center</property>
             <property name="vexpand">True</property>
             <property name="border-width">50</property>
-            <property name="row-spacing">23</property>
             <child>
               <!-- n-columns=1 n-rows=2 -->
               <object class="GtkGrid">
@@ -859,25 +859,13 @@
                 <property name="can-focus">False</property>
                 <property name="halign">center</property>
                 <child>
-                  <object class="GtkButton">
-                    <property name="label" translatable="yes">Расчитать</property>
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">1</property>
-                  </packing>
-                </child>
-                <child>
                   <!-- n-columns=3 n-rows=1 -->
                   <object class="GtkGrid">
-                    <property name="width-request">340</property>
+                    <property name="width-request">800</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkEntry">
+                      <object class="GtkEntry" id="calcStatEntry">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                       </object>
@@ -915,6 +903,18 @@
                     <property name="top-attach">0</property>
                   </packing>
                 </child>
+                <child>
+                  <object class="GtkButton" id="calcStatBtn">
+                    <property name="label" translatable="yes">Расчитать</property>
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">1</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -934,8 +934,6 @@
                     <property name="vexpand">True</property>
                     <property name="justify">center</property>
                     <attributes>
-                      <attribute name="font-desc" value="Sans Bold 10"/>
-                      <attribute name="foreground" value="#000000000000"/>
                       <attribute name="size" value="15000"/>
                     </attributes>
                   </object>
@@ -949,8 +947,8 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="justify">center</property>
+                    <property name="xalign">0</property>
                     <attributes>
-                      <attribute name="font-desc" value="Sans Bold 10"/>
                       <attribute name="size" value="15000"/>
                     </attributes>
                   </object>
@@ -1008,7 +1006,7 @@
             <child>
               <object class="GtkButton" id="kick_btn">
                 <property name="label" translatable="yes">Исключить</property>
-                <property name="width-request">300</property>
+                <property name="width-request">800</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
@@ -1023,7 +1021,7 @@
             <child>
               <object class="GtkButton" id="promoteBtn">
                 <property name="label" translatable="yes">Назначить администратором</property>
-                <property name="width-request">300</property>
+                <property name="width-request">600</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>

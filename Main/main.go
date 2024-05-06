@@ -4,6 +4,7 @@ import (
 	"GoTarantool/Server"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -179,11 +180,7 @@ func main() {
 	})
 
 	statisticsWin := objStatisticsWin.(*gtk.Dialog)
-	statisticsWin.Connect("delete-event", func() {
-		statisticsWin.Hide()
-
-	})
-
+	
 	usersWin := objUsersWin.(*gtk.Dialog)
 
 	objMain, _ = b.GetObject("msg_entry")
@@ -219,6 +216,15 @@ func main() {
 
 	objStatisticsWin, _ = b.GetObject("statistics_label_maxUserMsg")
 	statLabelMaxUserMsg := objStatisticsWin.(*gtk.Label)
+
+	objStatisticsWin, _ = b.GetObject("calcStatBtn")
+	calcStatBtn := objStatisticsWin.(*gtk.Button)
+
+	objStatisticsWin, _ = b.GetObject("btnCloseStatWin")
+	btnCloseStatWin := objStatisticsWin.(*gtk.Button)
+
+	objStatisticsWin, _ = b.GetObject("calcStatEntry")
+	calcStatEntry := objStatisticsWin.(*gtk.Entry)
 
 	objMain, _ = b.GetObject("labelCheckId")
 	labelCheckId := objMain.(*gtk.Label)
@@ -364,6 +370,15 @@ func main() {
 		winJoinGroup.Hide()
 	})
 
+	statisticsWin.Connect("delete-event", func() {
+		statLabelMsgCnt.SetText("")
+		statLabelMaxUserMsg.SetText("")
+		calcStatEntry.SetText("")
+		statisticsWin.Hide()
+
+	})
+
+
 	groupsListbox.Connect("button-press-event", func(box *gtk.ListBox, event *gdk.Event) {
 		buttonEvent := gdk.EventButtonNewFromEvent(event)
 		if buttonEvent.Type() == gdk.EVENT_2BUTTON_PRESS || buttonEvent.Type() == gdk.EVENT_3BUTTON_PRESS {
@@ -428,24 +443,41 @@ func main() {
 		//fmt.Println(labelRow.GetText())
 	})
 
+	calcStatBtn.Connect("clicked", func() {
+		daysAgoStr, _ := calcStatEntry.GetText()
+		daysAgo, err := strconv.Atoi(daysAgoStr)
+		if err == nil {
+			formatedDaysAgo := formatDays(daysAgo)
+			info, _ := conn.Call("fn.get_msg_cnt", []interface{}{SelectedGroupId, daysAgo})
+			msgTuples := info.Tuples()
+			msgCnt := msgTuples[0][0].(string)
+
+			labelString := fmt.Sprintf("Всего сообщений за последние %s: %s", formatedDaysAgo, msgCnt)
+			statLabelMsgCnt.SetText(labelString)
+
+			info, _ = conn.Call("fn.get_max_user_sg", []interface{}{SelectedGroupId, daysAgo})
+			msgTuples = info.Tuples()
+			if msgTuples[0][0] != nil {
+				maxUser := msgTuples[0][0].(string)
+
+				maxCnt := msgTuples[1][0].(string)
+
+				labelString = fmt.Sprintf("Больше всех сообщений за последние %s написал: %s - %s", formatedDaysAgo, maxUser, maxCnt)
+				statLabelMaxUserMsg.SetText(labelString)
+			}
+		}
+
+	})
+
 	statisticsBtn.Connect("clicked", func() {
-		daysAgo := 30
-		info, _ := conn.Call("fn.get_msg_cnt", []interface{}{SelectedGroupId, daysAgo})
-		msgTuples := info.Tuples()
-		msgCnt := msgTuples[0][0].(string)
-
-		labelString := fmt.Sprintf("Всего сообщений за последние %d дней: %s", daysAgo, msgCnt)
-		statLabelMsgCnt.SetText(labelString)
-
-		info, _ = conn.Call("fn.get_max_user_sg", []interface{}{SelectedGroupId, daysAgo})
-		msgTuples = info.Tuples()
-		maxUser := msgTuples[0][0].(string)
-		maxCnt := msgTuples[1][0].(string)
-
-		labelString = fmt.Sprintf("Больше всех сообщений за последние %d дней написал: %s - %s", daysAgo, maxUser, maxCnt)
-		statLabelMaxUserMsg.SetText(labelString)
-
 		statisticsWin.Run()
+	})
+
+	btnCloseStatWin.Connect("clicked", func() {
+		statLabelMsgCnt.SetText("")
+		statLabelMaxUserMsg.SetText("")
+		calcStatEntry.SetText("")
+		statisticsWin.Hide()
 	})
 
 	btnChangeMsg.Connect("clicked", func() {
@@ -470,15 +502,26 @@ func main() {
 		fmt.Println(changeMsgEntry.GetText())
 		msgId, _ := selectedRowMsg.GetName()
 		msgText, _ := changeMsgEntry.GetText()
+		fmt.Println("------------------")
 		info, _ := conn.Call("fn.edit_msg", []interface{}{msgId, msgText})
+		fmt.Println("------------------")
+		fmt.Println(info)
+		
 		msgTuples := info.Tuples()
-		fmt.Println(msgTuples)
 		newMsgUser := msgTuples[0][0].(string)
 		newMsgGroup := msgTuples[1][0].(string)
+		fmt.Println(newMsgGroup)
 		newMsgText := msgTuples[2][0].(string)
+		newMsgTime := int64(msgTuples[3][0].(uint64))
+
+		convertedTime := time.Unix(newMsgTime, 0)
+		hours := convertedTime.Hour()
+		minutes := convertedTime.Minute()
+		newMsg := fmt.Sprintf("%02d:%02d %s(%s): %s", hours, minutes, newMsgUser, newMsgGroup, newMsgText)
+
 		row, _ := selectedRowMsg.GetChild()
 		rowLabel := row.(*gtk.Label)
-		rowLabel.SetText(newMsgUser + "(" + newMsgGroup + "): " + newMsgText)
+		rowLabel.SetText(newMsg)
 
 		//TODO автозаполнение поля изменения сообщения,изменение только своего сообщения
 		winChangeMsg.Hide()
@@ -799,11 +842,11 @@ func main() {
 	promoteBtn.Connect("clicked", func() {
 		if selectedRowUsers != nil {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			
+
 			nameRole, _ := selectedRowUsers.GetName()
 			nameRoleArr := strings.Fields(nameRole)
 			userName := nameRoleArr[0]
-			
+
 			if MyRole == "admin" {
 				message := fmt.Sprintf("Пользователь %s повышен до администратора", userName)
 				_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
@@ -903,7 +946,7 @@ func main() {
 	kickBtn.Connect("clicked", func() {
 		if selectedRowUsers != nil {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			
+
 			nameRole, _ := selectedRowUsers.GetName()
 			nameRoleArr := strings.Fields(nameRole)
 			userName := nameRoleArr[0]
@@ -1188,7 +1231,9 @@ func GetUsers(conn *tarantool.Connection, usersListbox *gtk.ListBox) bool {
 			if userDays == "no" {
 				userDaysText = "Нет сообщений"
 			} else {
-				userDaysText = fmt.Sprintf("Последняя активность %s дней назад", userDays)
+				intUserDays, _ := strconv.Atoi(userDays)
+				formatedUserDays := formatDays(intUserDays)
+				userDaysText = fmt.Sprintf("Последняя активность %s назад", formatedUserDays)
 			}
 			labelUser2, _ := gtk.LabelNew(userDaysText)
 			markup = fmt.Sprintf("<span font_desc='Serif Bold 10'>%s</span>", userDaysText)
@@ -1316,6 +1361,15 @@ func getTextBeforeSubstring(input string, substring string) string {
 	} else {
 		return input
 	}
+}
+
+func formatDays(num int) string {
+	if num%10 == 1 && num%100 != 11 {
+		return fmt.Sprintf("%d день", num)
+	} else if (num%10 >= 2 && num%10 <= 4) && !(num%100 >= 12 && num%100 <= 14) {
+		return fmt.Sprintf("%d дня", num)
+	}
+	return fmt.Sprintf("%d дней", num)
 }
 
 func GetMsgTimer(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
@@ -1486,6 +1540,7 @@ func startTimer(conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListb
 	timerId = glib.TimeoutAdd(1000, func() bool {
 		//fmt.Println("Tick at new timer", time.Now().Format("15:04:05"))
 		GetMsg(&getMsgParams)
+
 		// Здесь логика выполнения таймера
 		return true // продолжать выполнение
 	})
