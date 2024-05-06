@@ -519,11 +519,7 @@ func main() {
 			selectedRowUsers = nil
 		} else {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			labelRow, _ := selectedRowUsers.GetChild()
-			userLabel := labelRow.(*gtk.Label)
-			userName, _ := userLabel.GetText()
 			userRole, _ := selectedRowUsers.GetName()
-			fmt.Println(userName)
 			fmt.Println(userRole)
 
 		}
@@ -803,12 +799,11 @@ func main() {
 	promoteBtn.Connect("clicked", func() {
 		if selectedRowUsers != nil {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			labelRow, _ := selectedRowUsers.GetChild()
-			userLabel := labelRow.(*gtk.Label)
-			userName, _ := userLabel.GetText()
-			userRole, _ := selectedRowUsers.GetName()
-			fmt.Println(userName)
-			fmt.Println(userRole)
+			
+			nameRole, _ := selectedRowUsers.GetName()
+			nameRoleArr := strings.Fields(nameRole)
+			userName := nameRoleArr[0]
+			
 			if MyRole == "admin" {
 				message := fmt.Sprintf("Пользователь %s повышен до администратора", userName)
 				_, _ = conn.Call("fn.new_msg", []interface{}{message, SelectedGroupId, "system"})
@@ -839,11 +834,12 @@ func main() {
 	downgradeBtn.Connect("clicked", func() {
 		if selectedRowUsers != nil {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			labelRow, _ := selectedRowUsers.GetChild()
-			userLabel := labelRow.(*gtk.Label)
-			userName, _ := userLabel.GetText()
-			userRole, _ := selectedRowUsers.GetName()
-			userName = getTextBeforeSubstring(userName, " (")
+
+			nameRole, _ := selectedRowUsers.GetName()
+			nameRoleArr := strings.Fields(nameRole)
+			userName := nameRoleArr[0]
+			userRole := nameRoleArr[1]
+
 			fmt.Println(userName)
 			fmt.Println(userRole)
 			if MyUser == userName {
@@ -907,13 +903,11 @@ func main() {
 	kickBtn.Connect("clicked", func() {
 		if selectedRowUsers != nil {
 			selectedRowUsers = usersListbox.GetSelectedRow()
-			labelRow, _ := selectedRowUsers.GetChild()
-			userLabel := labelRow.(*gtk.Label)
-			userName, _ := userLabel.GetText()
-			userName = getTextBeforeSubstring(userName, " (")
-			userRole, _ := selectedRowUsers.GetName()
-			fmt.Println(userName)
-			fmt.Println(userRole)
+			
+			nameRole, _ := selectedRowUsers.GetName()
+			nameRoleArr := strings.Fields(nameRole)
+			userName := nameRoleArr[0]
+
 			if userName == MyUser {
 				fmt.Println("Вы не можете удалить сами себя")
 			} else if MyRole != "admin" {
@@ -1176,20 +1170,28 @@ func GetUsers(conn *tarantool.Connection, usersListbox *gtk.ListBox) bool {
 		for i := 0; i < len(groupUsersTuples); i++ {
 			userName := groupUsersTuples[i][0].(string)
 			userRole := groupUsersTuples[i][1].(string)
-			fmt.Println(userName, userRole)
+			userDays := groupUsersTuples[i][2].(string)
 			rowUser, _ := gtk.ListBoxRowNew()
+			fullName := userName
 			if userRole == "admin" {
-				userName = userName + " (admin)"
+				fullName = userName + " (admin)"
 			}
-			labelUser, _ := gtk.LabelNew(userName)
-			markup := fmt.Sprintf("<span font_desc='Serif Bold 15'>%s</span>", userName)
+			labelUser, _ := gtk.LabelNew(fullName)
+			markup := fmt.Sprintf("<span font_desc='Serif Bold 15'>%s</span>", fullName)
 			labelUser.SetMarkup(markup)
 			labelUser.SetSizeRequest(300, -1) // Set the width of Label1
 			labelUser.SetHAlign(gtk.ALIGN_START)
 			labelUser.SetJustify(gtk.JUSTIFY_LEFT)
 			labelUser.SetXAlign(0)
+			userDaysText := ""
 
-			labelUser2, _ := gtk.LabelNew(userName)
+			if userDays == "no" {
+				userDaysText = "Нет сообщений"
+			} else {
+				userDaysText = fmt.Sprintf("Последняя активность %s дней назад", userDays)
+			}
+			labelUser2, _ := gtk.LabelNew(userDaysText)
+			markup = fmt.Sprintf("<span font_desc='Serif Bold 10'>%s</span>", userDaysText)
 			labelUser2.SetMarkup(markup)
 			labelUser2.SetSizeRequest(300, -1)
 			labelUser2.SetHAlign(gtk.ALIGN_START)
@@ -1201,12 +1203,10 @@ func GetUsers(conn *tarantool.Connection, usersListbox *gtk.ListBox) bool {
 			box.PackStart(labelUser2, false, false, 0)
 
 			rowUser.Add(box)
-			rowUser.SetName(userRole)
+			rowUser.SetName(userName + " " + userRole)
 			usersListbox.Prepend(rowUser)
 
 		}
-		fmt.Println(SelectedGroupId)
-		fmt.Println(info)
 		usersListbox.ShowAll()
 		return true
 	}
@@ -1361,16 +1361,16 @@ func GetMsgTimer(conn *tarantool.Connection, msgListBox *gtk.ListBox) {
 
 func GetMsg(p *GetMsgParams) {
 	if selectedRowGroup != nil {
-		fmt.Println("Загрузка сообщений")
+		//fmt.Println("Загрузка сообщений")
 		var lastTimedMsg uint64
 
-		fmt.Println("Начало")
+		//fmt.Println("Начало")
 
 		info, _ := p.conn.Call("fn.group_exists", []interface{}{MyUser, selectedRowGroupId})
 		groupExistsTuples := info.Tuples()
 		groupExists := groupExistsTuples[0][0].(bool)
 		if groupExists {
-			fmt.Println("len(messagesArr) ", len(messagesArr))
+			//fmt.Println("len(messagesArr) ", len(messagesArr))
 			if len(messagesArr) == 0 {
 				//clearListbox(msgListBox)
 				lastTimedMsg = 0 // В самом начале загружаем все сообщения
@@ -1388,7 +1388,7 @@ func GetMsg(p *GetMsgParams) {
 			cntMsg := int(newMessagesCntTuples[0][0].(uint64))
 			//fmt.Println("lastTimedMsg", lastTimedMsg)
 			//fmt.Println(newMessagesCntTuples)
-			fmt.Println("cntMsg", cntMsg)
+			//fmt.Println("cntMsg", cntMsg)
 
 			var newMessages []MessageStruct
 			for i := 0; i < cntMsg; i++ {
@@ -1480,11 +1480,11 @@ var timerId glib.SourceHandle
 
 func startTimer(conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox) {
 	if timerId > 0 {
-		fmt.Println("1")
+		//fmt.Println("1")
 		glib.SourceRemove(timerId)
 	}
 	timerId = glib.TimeoutAdd(1000, func() bool {
-		fmt.Println("Tick at new timer", time.Now().Format("15:04:05"))
+		//fmt.Println("Tick at new timer", time.Now().Format("15:04:05"))
 		GetMsg(&getMsgParams)
 		// Здесь логика выполнения таймера
 		return true // продолжать выполнение
