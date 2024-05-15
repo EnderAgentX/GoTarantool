@@ -1195,6 +1195,9 @@
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Логин</property>
                 <property name="justify">center</property>
+                <attributes>
+                  <attribute name="size" value="15000"/>
+                </attributes>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1219,6 +1222,9 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Пароль</property>
+                <attributes>
+                  <attribute name="size" value="15000"/>
+                </attributes>
               </object>
               <packing>
                 <property name="expand">False</property>
