@@ -25,14 +25,6 @@ var selectedRowMsg *gtk.ListBoxRow
 var selectedRowGroup *gtk.ListBoxRow
 var selectedRowUsers *gtk.ListBoxRow
 var selectedRowGroupId string
-var stopChan = make(chan struct{})
-var msgChan = make(chan []MessageStruct)
-
-type Timer struct {
-	ticker   *time.Ticker
-	stopChan chan bool
-	active   bool
-}
 
 type TimedMsg struct {
 	msg  string
