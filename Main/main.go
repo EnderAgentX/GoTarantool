@@ -1301,7 +1301,7 @@ func stopTimer() {
 	}
 }
 
-func restartTimer(conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox) {
+func restartTimer() {
 	stopTimer()
 	startTimer()
 }
