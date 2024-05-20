@@ -778,7 +778,7 @@ func main() {
 				guildTextLabel.Hide()
 				tagLabel.Hide()
 				tagTextLabel.Hide()
-				startTimer(conn, msgListbox, groupsListbox)
+				startTimer()
 
 			} else {
 				errText := "Ошибка! \n Неверный логин или пароль!"
@@ -1283,7 +1283,7 @@ func GetMsg(p *GetMsgParams) {
 
 var timerId glib.SourceHandle
 
-func startTimer(conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox) {
+func startTimer() {
 	if timerId > 0 {
 		glib.SourceRemove(timerId)
 	}
@@ -1303,5 +1303,5 @@ func stopTimer() {
 
 func restartTimer(conn *tarantool.Connection, msgListbox *gtk.ListBox, groupsListbox *gtk.ListBox) {
 	stopTimer()
-	startTimer(conn, msgListbox, groupsListbox)
+	startTimer()
 }
